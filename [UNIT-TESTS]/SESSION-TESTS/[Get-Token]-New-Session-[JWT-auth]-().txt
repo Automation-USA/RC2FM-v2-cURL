@@ -19,7 +19,7 @@ Important Notes:
 
 # Specify user login credentials for each environment (using phone number as username)
 # 
-# call Get-Token API endpoint using JTW auth flow
+# call Get-Token API endpoint using JWT auth flow
 Perform Script [ Specified: From list ; “[POST]__RingCentral-Get-Token-[New-Session]-( )” ; Parameter:    ]
 Set Variable [ $result ; Value: Get (ScriptResult) ] 
 # 

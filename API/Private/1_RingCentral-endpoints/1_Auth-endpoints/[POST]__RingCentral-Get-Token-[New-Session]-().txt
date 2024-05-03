@@ -11,7 +11,7 @@ Purpose:
 Authenticates user using JWT auth flow and obtains an API access token
 
 Parameters:
-None. Only requries JTW Token global var ("$$jwt).
+None. Only requries JWT Token global var ("$$jwt).
 
 Reference:
 -https://developers.ringcentral.com/api-reference/Get-Token

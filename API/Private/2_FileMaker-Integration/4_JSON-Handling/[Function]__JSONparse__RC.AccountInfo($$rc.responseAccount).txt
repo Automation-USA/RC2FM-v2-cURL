@@ -1,0 +1,8 @@
+# [Function]__JSONparse__RC.AccountInfo($$rc.responseAccount)
+
+Allow User Abort [ Off ]
+Set Variable [ $$rc.accountOperatorExtension ; Value: JSONGetElement ( $$rc.responseAccount ; ".operator.extensionNumber" ) ] 
+Set Variable [ $$rc.accountID ; Value: JSONGetElement ( $$rc.responseAccount ; ".id" ) ] 
+Set Variable [ $$rc.accountTimeZone ; Value: JSONGetElement ( $$rc.responseAccount ; ".regionalSettings.timezone.name" ) ] 
+Set Variable [ $$rc.accountTimeZoneOffset ; Value: JSONGetElement ( $$rc.responseAccount ; ".regionalSettings.timezone.bias" ) ] 
+// Set Variable [ $$MainCompanyNumber ; Value: JSONGetElement ( $$rc.responseAccount ; ".mainNumber" ) ] 

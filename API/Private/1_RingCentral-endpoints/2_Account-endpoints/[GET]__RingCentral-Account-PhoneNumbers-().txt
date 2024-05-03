@@ -1,0 +1,42 @@
+# Name:
+[GET]__RingCentral-Account-PhoneNumbers-()
+
+History:
+Created by: Julio Toledo - Automation USA LLC
+Created: 2020-01-11
+Last Modified: 2023-1111 - Julio Toledo
+Completed code QA
+
+Purpose:
+List All Company Phone Numbers (company-level and extension-level)
+
+Parameters: None
+
+Global Variables:
+-Requires valid "$$rc.responseTokenOAuth" JSON object (from API session authentication)
+-Requires "$$rc.tokenTTL" API environment variable 
+
+Reference:
+https://developers.ringcentral.com/api-reference/Phone-Numbers/listAccountPhoneNumbers
+
+Important Notes:
+-Requires FileMaker 16+ native JSON functions
+
+# validate token
+Set Variable [ $tokenTimeLeft ; Value: GetAsNumber ( Get ( CurrentHostTimestamp ) - GetAsTimestamp ( $$rc.accessTokenExpiryTime ) ) ] 
+If [ $tokenTimeLeft > -60 ] 
+	Perform Script [ Specified: From list ; “[POST]__RingCentral-Refresh-Token-[Prolong-Session]-( )” ; Parameter:    ]
+End If
+Set Variable [ $token ; Value: JSONGetElement ( $$rc.responseTokenOAuth ; ".access_token" ) ] 
+# 
+# concatenate entire cURL command
+Set Variable [ $cURL ; Value: " -X GET --header \"Accept: application/json\" --header \"Authorization: Bearer " & $token & "\" --header \"User-Agent: " & $$rc.userAgent & "\" " ] 
+# 
+# concatenate endpoint
+Set Variable [ $url ; Value: $$rc.baseURL & $$rc.endpointAccountPhoneNumbers & "?perPage=1000" ] 
+# 
+# [HTTP-GET]
+Insert from URL [ Select ; With dialog: Off ; Target: $$rc.responseAccountExtensions ; $url ; Verify SSL Certificates ; cURL options: $cURL ] 
+# 
+# Parse API response
+Perform Script [ Specified: From list ; “[Function]__JSONparse__RC.AccountPhoneNumbers($$rc.responseAccountExtensions)” ; Parameter:    ]

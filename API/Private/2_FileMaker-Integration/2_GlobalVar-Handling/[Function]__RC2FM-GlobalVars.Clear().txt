@@ -1,0 +1,119 @@
+# Name:
+[Function]__RC2FM-GlobalVars.Clear()
+
+History:
+Created by: Julio Toledo - Automation USA LLC
+Created: 2020-01-11
+Last Modified: 2023-1111 - Julio Toledo
+Completed code QA
+
+Purpose:
+Clears all FileMaker global variables for RingCentral API session
+
+Parameters:
+None
+
+Important Notes:
+-Requires Base645EncodeRFC function (FileMaker 17+)
+
+Allow User Abort [ Off ]
+# 
+# clear user phone numbers
+Set Variable [ $startingValue ; Value: JSONGetElement ( $$rc.responseUserPhoneNums ; ".paging.pageStart" ) ] 
+Set Variable [ $NumberCount ; Value: JSONGetElement ( $$rc.responseUserPhoneNums ; ".paging.totalElements" ) ] 
+# 
+Set Variable [ $LoopCounter ; Value: $startingValue ] 
+Loop
+	Set Variable [ $recordNum ; Value: ".records[" & $LoopCounter & "]" ] 
+	# 
+	If [ not IsEmpty ( JSONGetElement ( $$rc.responseUserPhoneNums ; $recordNum & ".vanityPattern" ) ) ] 
+		Set Variable [ $theLabel ; Value: "vanityNumber_" & $LoopCounter ] 
+	Else
+		Set Variable [ $theLabel ; Value: JSONGetElement ( $$rc.responseUserPhoneNums ; $recordNum & ".usageType" ) ] 
+	End If
+	Set Variable [ $NameValuePair ; Value: Evaluate ( "Let ( [ $$" & $theLabel & " = " & "\"\"" & " ] ; \"\" )" ) ] 
+	# 
+	Set Variable [ $LoopCounter ; Value: $LoopCounter + 1 ] 
+	Exit Loop If [ $LoopCounter > $NumberCount ] 
+End Loop
+# 
+# 
+# clear account extensions
+Set Variable [ $startingValue ; Value: JSONGetElement ( $$rc.responseAccountExtensions ; ".paging.pageStart" ) ] 
+Set Variable [ $ExtensionCount ; Value: JSONGetElement ( $$rc.responseAccountExtensions ; ".paging.totalElements" ) ] 
+# 
+Set Variable [ $LoopCounter ; Value: $startingValue ] 
+Loop
+	Set Variable [ $recordNum ; Value: ".records[" & $LoopCounter & "]" ] 
+	# 
+	Set Variable [ $theLabel ; Value: "extension"  & JSONGetElement ( $$rc.responseAccountExtensions ; $recordNum & ".extension.extensionNumber" ) ] 
+	Set Variable [ $NameValuePair ; Value: Evaluate ( "Let ( [ $$" & $theLabel & " = " & "\"\"" & " ] ; \"\" )" ) ] 
+	# 
+	Set Variable [ $anID ; Value: JSONGetElement ( $$rc.responseAccountExtensions ; $recordNum & ".extension.id" ) ] 
+	Set Variable [ $theLabel ; Value: "extension"  & JSONGetElement ( $$rc.responseAccountExtensions ; $recordNum & ".extension.extensionNumber" ) & "_id" ] 
+	Set Variable [ $NameValuePair ; Value: Evaluate ( "Let ( [ $$" & $theLabel & " = " & "\"\"" & " ] ; \"\" )" ) ] 
+	# 
+	Set Variable [ $LoopCounter ; Value: $LoopCounter + 1 ] 
+	Exit Loop If [ $LoopCounter > $ExtensionCount ] 
+End Loop
+# 
+Set Variable [ $$DirectNumber_1 ; Value: "" ] 
+Set Variable [ $$DirectNumber_2 ; Value: "" ] 
+Set Variable [ $$DirectNumber_3 ; Value: "" ] 
+Set Variable [ $$DirectNumber_4 ; Value: "" ] 
+Set Variable [ $$DirectNumber_5 ; Value: "" ] 
+# 
+Set Variable [ $$rc.responseTokenOAuth ; Value: "" ] 
+Set Variable [ $$rc.responseTokenOAuthHeader ; Value: "" ] 
+Set Variable [ $$rc.responseTokenOAuth.Revoke ; Value: "" ] 
+Set Variable [ $$rc.accessTokenExpiryTime ; Value: "" ] 
+Set Variable [ $$rc.refreshTokenExpiryTime ; Value: "" ] 
+// Set Variable [ $$rc.revoke.RefreshToken.Header ; Value: "" ] 
+// Set Variable [ $$rc.revoke.AccessToken.Header ; Value: "" ] 
+// Set Variable [ $$refresh_tokenTTL ] 
+// Set Variable [ $$refresh_token ] 
+# 
+Set Variable [ $$rc.accountID ; Value: "" ] 
+Set Variable [ $$rc.accountTimeZone ; Value: "" ] 
+Set Variable [ $$rc.accountTimeZoneOffset ; Value: "" ] 
+Set Variable [ $$rc.accountOperatorExtension ; Value: "" ] 
+# 
+Set Variable [ $$rc.responseAuthz ; Value: "" ] 
+Set Variable [ $$rc.responseAuthzHeader ; Value: "" ] 
+Set Variable [ $$rc.responseAuthz.isAdmin ; Value: "" ] 
+Set Variable [ $$rc.responseAuthz.isAdminHeader ; Value: "" ] 
+# 
+Set Variable [ $$rc.responseMMS.send ; Value: "" ] 
+Set Variable [ $$rc.responseMMS.send.Header ; Value: "" ] 
+# 
+Set Variable [ $$rc.responseMessageLog ; Value: "" ] 
+Set Variable [ $$rc.responseMessageLogHeader ; Value: "" ] 
+# 
+Set Variable [ $$callRecordingHeader ; Value: "" ] 
+Set Variable [ $$callRecordingBinary ; Value: "" ] 
+# 
+Set Variable [ $$rc.responseAccount ; Value: "" ] 
+Set Variable [ $$rc.responseAccountHeader ; Value: "" ] 
+Set Variable [ $$rc.responseAccountExtensions ; Value: "" ] 
+Set Variable [ $$rc.responseUserPhoneNums ; Value: "" ] 
+# 
+Set Variable [ $$rc.responseFaxOut ; Value: "" ] 
+Set Variable [ $$rc.responseFaxOutHeader ; Value: "" ] 
+# 
+Set Variable [ $$rc.responseSMS.send ; Value: "" ] 
+Set Variable [ $$rc.responseSMS.sendHeader ; Value: "" ] 
+# 
+Set Variable [ $$rc.responseRingOut ; Value: "" ] 
+Set Variable [ $$rc.responseRingOutHeader ; Value: "" ] 
+Set Variable [ $$rc.responseRingOutStatusHeader ; Value: "" ] 
+Set Variable [ $$rc.responseRingOut_Rate ; Value: "" ] 
+# 
+Set Variable [ $$callStatus ; Value: "" ] 
+# 
+Set Variable [ $$rc.responseAttachmentHeader ; Value: "" ] 
+# 
+Set Variable [ $$rc.responseParsedNums ; Value: "" ] 
+# 
+Set Variable [ $$rc.responseCallLog ; Value: "" ] 
+Set Variable [ $$rc.responseCallLogHeader ; Value: "" ] 
+# 

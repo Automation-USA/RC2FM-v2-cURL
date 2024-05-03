@@ -1,0 +1,52 @@
+# [Function]__Get__FM.Environment.State()
+
+Exit Script [ Text Result: JSONFormatElements ( 
+		JSONSetElement ( 
+			"" ;
+			["AccountExtendedPrivileges" ; Get (AccountExtendedPrivileges) ; JSONString ] ;
+			["AccountPrivilegeSetName" ; Get (AccountPrivilegeSetName) ; JSONString ] ;
+			["AllowAbortState" ; Get (AllowAbortState) ; JSONString ] ;
+			["ApplicationArchitecture" ; Get (ApplicationArchitecture) ; JSONString ] ;
+			["ApplicationLanguage" ; Get (ApplicationLanguage); JSONString ] ;
+			["ApplicationVersion" ; Get (ApplicationVersion) ; JSONString ] ;
+			["ConnectionAttributes" ; Get (ConnectionAttributes) ; JSONString ] ;
+			["ConnectionState"; Get (ConnectionState) ; JSONString ] ;
+			["CurrentExtendedPrivileges" ; Get (CurrentExtendedPrivileges) ; JSONString ];
+			["CurrentPrivilegeSetName" ; Get (CurrentPrivilegeSetName) ; JSONString ] ;
+			["CustomMenuSetName" ; Get (CustomMenuSetName) ; JSONString ] ;
+			["DesktopPath" ; Get (DesktopPath) ; JSONString ] ;
+			["Device" ; Get (Device) ; JSONString ] ;
+			["DocumentsPath" ; Get (DocumentsPath) ; JSONString ] ;
+			["ErrorCaptureState" ; Get (ErrorCaptureState) ; JSONString ] ;
+			["FilePath" ; Get (FilePath) ; JSONString ] ;
+			["FileMakerPath"; Get (FileMakerPath) ; JSONString ];
+			["FoundCount" ; Get (FoundCount) ; JSONString ] ;
+			["HostIPAddress"; Get (HostIPAddress) ; JSONString ] ;
+			["HostApplicationVersion" ; Get (HostApplicationVersion) ; JSONString ] ;
+			["HostName" ; Get (HostName) ; JSONString ] ;
+			["InstalledFMPluging" ; Get (InstalledFMPlugins) ; JSONString ] ;
+			["LayoutAccess" ; Get (LayoutAccess) ; JSONString ] ;
+			["LayoutCount" ; Get (LayoutCount) ; JSONString ] ;
+			["LayoutName" ; Get (LayoutName) ; JSONString ] ;
+			["LayoutNumber" ; Get (LayoutNumber) ; JSONString ] ;
+			["LayoutTableName" ; Get (LayoutTableName) ; JSONString ] ;
+			["LayoutViewState"; Get (LayoutViewState) ; JSONString ] ;
+			[ "MenubarState"; Get (MenubarState) ; JSONString ] ;
+			["ModifiedFields" ; Get (ModifiedFields) ; JSONString ] ;
+			["MultiUserState" ; Get (MultiUserState) ; JSONString ] ;
+			["PreferencesPath" ; Get (PreferencesPath) ; JSONString ] ;
+			["RecordAccess" ; Get (RecordAccess) ; JSONString ] ;
+			["RecordID"; Get (RecordID) ; JSONString ] ;
+			["RecordOpenCount"; Get(RecordOpenCount); JSONString ];
+			["RecordOpenState"; Get (RecordOpenState); JSONString ] ;
+			["ScreenDepth"; Get (ScreenDepth) ; JSONString ] ;
+			["ScreenHeight" ; Get (ScreenHeight) ; JSONString ] ;
+			["ScreenScaleFactor" ; Get (ScreenScaleFactor) ; JSONString ] ;
+			["ScreenWidth" ; Get (ScreenWidth) ; JSONString ] ;
+			["ScriptAnimationState" ; Get (ScriptAnimationState) ; JSONString ] ;
+			["ScriptName"; Get (ScriptName); JSONString ];
+			["ScriptParameter" ; Get (ScriptParameter) ; JSONString ] ;
+			["StatusAreaState"; Get (StatusAreaState) ; JSONString ]
+		)
+	)
+] 

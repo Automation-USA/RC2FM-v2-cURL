@@ -1,0 +1,5 @@
+# [UTC-format]__Convert-LocalTimeStamp-to-UTC
+
+Perform Script [ Specified: From list ; “[Function]__Convert__Timestamp.toUTC( timestamp )” ; Parameter: Get ( CurrentTimestamp ) ]
+Set Variable [ $result ; Value: Get ( ScriptResult ) ] 
+Show Custom Dialog [ "UTC time: " & $result ] 

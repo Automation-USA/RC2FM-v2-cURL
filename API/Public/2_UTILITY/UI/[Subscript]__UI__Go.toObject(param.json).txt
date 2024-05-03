@@ -1,0 +1,101 @@
+# Name:
+[Subscript]__UI__Go.toObject(param.json)
+
+History:
+Created by Automation USA, LLC
+Created: 2015-10-04
+Last Modified: 2023-07-08 - Julio Toledo
+Modified error reporting to use script "[Function]__Get__FM.ErrorDescription( errorCode )" rather than a custom function.
+
+Modified: 2019-09-28 - Julio Toledo
+Implemented "Select_Row" parameter
+
+Modified: 2017-10-30 - Julio Toledo
+Implemented "Unlock_Record" parameter
+
+Modified: 2017-09-02 - Julio Toledo
+Converted script parameters to JSON format, modified "$Animation_Toggle" and "$Refresh_Window" conditions to boolean, renamed script
+
+Purpose:
+Navigates to object by name with or without slide animation. Optionally unocks record and closes any active popover, refreshes the object, a second object, or the entire window.
+
+Parameters:
+JSON object with following values:
+{
+	"Object_Name", 
+	"Unlock_Record", <-- JSONNumber (FMP boolean)
+	"Animation_Toggle", <-- JSONNumber (FMP boolean)
+	"Dependent_Object_name"
+	"Refresh_Window", <-- JSONNumber (FMP boolean)
+	"Select_Row" <-- row number
+}
+- only the "Object_Name" object is required, all others are either optional or have defaults
+- Example use:
+	JSONSetElement ( "{}" ; 
+		[ "Object_Name" ; "slide_001" ; JSONString ] ; 
+		[ "Animation_Toggle" ; True ; JSONNumber] ;
+		[ "Refresh_Window" ; True ; JSONNumber ]
+	)
+
+Important Notes:
+-Requires FileMaker 16+ JSON parsing functions
+
+Set Variable [ $scriptName ; Value: "Script: " & Quote ( Get (ScriptName) ) ] 
+# 
+Allow User Abort [ On ]
+# Escape if parameter is not supplied
+If [ IsEmpty ( Get ( ScriptParameter ) ) ] 
+	Perform Script [ Specified: From list ; “[Function]__Get__FM.ErrorDescription( errorCode )” ; Parameter: 958 ]
+	Set Variable [ $ErrorDescription ; Value: Get ( ScriptResult ) ] 
+	Exit Script [ Text Result: JSONSetElement ( "{}" ; [ "errorCode" ; 958 ; JSONNumber ] ; [ "error_description" ; $ErrorDescription ; JSONString ] ; [ "error" ; True ; "" ] ) ] 
+End If
+# 
+# validate script parameter
+If [ Left ( JSONFormatElements (  Get ( ScriptParameter ) ) ; 1 ) = "?" ] 
+	Perform Script [ Specified: From list ; “[Function]__Get__FM.ErrorDescription( errorCode )” ; Parameter: 1710 ]
+	Set Variable [ $ErrorDescription ; Value: Get ( ScriptResult ) ] 
+	Exit Script [ Text Result: JSONSetElement ( "{}" ; [ "errorCode" ; 1710 ; JSONNumber ] ; [ "error_description" ; "Malformed JSON or " & $ErrorDescription & ¶ & ¶ & $scriptName ; JSONString ] ; [ "error" ; True ; "" ] ) ] 
+Else
+	# store script parameter
+	Set Variable [ $param.json ; Value: Get ( ScriptParameter ) ] 
+End If
+# 
+# parse JSON
+Set Variable [ $Object_Name ; Value: JSONGetElement ( $param.json ; "Object_Name" ) ] 
+Set Variable [ $Unlock_Record ; Value: JSONGetElement ( $param.json ; "Unlock_Record" ) ] 
+Set Variable [ $Animation_Toggle ; Value: JSONGetElement ( $param.json ; "Animation_Toggle" ) ] 
+Set Variable [ $Refresh_Window ; Value: JSONGetElement ( $param.json ; "Refresh_Window" ) ] 
+Set Variable [ $Dependent_Object_Name ; Value: JSONGetElement ( $param.json ; "Dependent_Object_Name" ) ] 
+Set Variable [ $Select_Row ; Value: JSONGetElement ( $param.json ; "Select_Row" ) ] 
+# 
+# execute navigation commands
+If [ $Unlock_Record = True ] 
+	Close Popover
+	Go to Field [ Select/perform ] 
+End If
+# 
+If [ $Animation_Toggle = True ] 
+	Set Layout Object Animation [ On ]
+Else
+	Set Layout Object Animation [ Off ]
+End If
+# 
+Go to Object [ Object Name: $Object_Name ] 
+# 
+If [ not IsEmpty ( $Select_Row ) ] 
+	Set Error Capture [ On ]
+	Go to Portal Row [ Select: On ; With dialog: Off ; $Select_Row ]
+	Set Error Capture [ Off ]
+End If
+# 
+If [ $Refresh_Window = True ] 
+	Refresh Window [ Flush cached join results ] 
+	Exit Script [ Text Result: True ] 
+End If
+# 
+If [ not IsEmpty ( $Dependent_Object_Name ) ] 
+	Refresh Object [ Object Name: $Dependent_Object_Name ; Repetition: 1 ] 
+End If
+# 
+Refresh Object [ Object Name: $Object_Name ; Repetition: 1 ] 
+# 

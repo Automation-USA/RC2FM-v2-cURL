@@ -1,0 +1,70 @@
+# Name:
+[Function]__String.SuperTrim(thetext)
+
+History:
+Created by: Julio Toledo - Automation USA LLC
+Created: 2020-01-11
+Last Modified: 2023-1111 - Julio Toledo
+Completed code QA
+
+Purpose:
+Implements Custom Function: "Supertrim ( text )" as a script.
+------------------
+Supertrim ( text )
+© Written by Debi Fuchs of Aptworks Consulting, debi@aptworks.com (but please use freely!)
+
+Speedily (and with no recursion) remove leading and trailing white space (including spacing, tabs returns, and line feeds) from a text string.
+
+NOTE: Similar to TrimAll, except that it also removes tabs and returns and line feeds (in addition to spaces), and it does not touch any spacing WITHIN the string. 
+
+EXAMPLE:
+  Supertrim("  John  Smith¶") // --> "John  Smith¶"
+
+LAST MODIFIED: 22-SEP-2014 by  Erik S. of NYC: Added Line Feeds
+PRIOR MODIFICATION: 20-AUG-2008 by Debi Fuchs of Aptworks Consulting
+------------------
+
+Important Notes:
+-Requires FileMaker 16+ native JSON functions
+-Requires "ErrorDescription" custom function
+
+# Test for script parameter
+If [ IsEmpty ( Get ( ScriptParameter ) ) ] 
+	Exit Script [ Text Result: JSONSetElement ( "{}" ; [ "errorCode" ; 958 ; JSONNumber ] ; [ "error_description" ; ErrorDescription ( 958 ) ; JSONString ] ; [ "error" ; True ; "" ] ) ] 
+End If
+# 
+Set Variable [ $thetext ; Value: Get ( ScriptParameter ) ] 
+Exit Script [ Text Result: Let(
+	  [
+		// Determine value of original string with ALL whitespace removed.  
+		t2 = Substitute( $thetext; [ " "; "" ]; [ " "; "" ]; [ "	"; "" ]; [ "¶"; "" ]; [ Char(10); "" ] );
+		
+		// Determine position of first non-ws character in original string.
+		first_char = Position( $thetext; Left( t2; 1 ); 0; 1 );
+		
+		// Determine position of last non-ww character in original string.
+		last_char = Position( $thetext; Right( t2; 1 ); Length( $thetext ); -1 )
+	  ];
+	  
+	  // If any non-whitespace characters exist return appropriate
+	  // middle portion of original text.
+	  
+	  Case( first_char; Middle( $thetext; first_char; last_char - first_char + 1 ) )
+	)
+	
+	/*
+	CUSTOM FUNCTION: Supertrim ( text )
+	© Written by Debi Fuchs of Aptworks Consulting, debi@aptworks.com (but please use freely!)
+	
+	Speedily (and with no recursion) remove leading and trailing white space (including spacing, tabs returns, and line feeds) from a text string.
+	
+	NOTE: Similar to TrimAll, except that it also removes tabs and returns and line feeds (in addition to spaces), and it does not touch any spacing WITHIN the string. 
+	
+	EXAMPLE:
+	  Supertrim("  John  Smith¶") // --> "John  Smith¶"
+	
+	LAST MODIFIED: 22-SEP-2014 by  Erik S. of NYC: Added Line Feeds
+	PRIOR MODIFICATION: 20-AUG-2008 by Debi Fuchs of Aptworks Consulting
+	
+	*/
+] 

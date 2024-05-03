@@ -1,0 +1,47 @@
+# Name:
+[GET]__RingCentral-RingOut-CallStatus-()
+
+History:
+Created by: Julio Toledo - Automation USA LLC
+Created: 2020-01-11
+Last Modified: 2023-0715 - Julio Toledo
+Completed code QA
+
+Purpose:
+Returns a status of a 2-legged RingOut call. Call status may be any of the following:
+"Invalid", "Success", "InProgress", "Busy", "NoAnswer", 
+"Rejected", "GenericError", "Finished", "InternationalDisabled", 
+"DestinationBlocked", "NotEnoughFunds", "NoSuchUse"
+
+Global Variables:
+-Requires valid "$$rc.responseTokenOAuth" JSON object (from API session authentication)
+-Requires valid "$$rc.responseRingOut" JSON object (from active RingOut call)
+
+Reference:
+https://developers.ringcentral.com/api-reference/RingOut/readRingOutCallStatus
+
+Important Notes:
+-Requires FileMaker 16+ native JSON functions
+
+Set Variable [ $token ; Value: JSONGetElement ( $$rc.responseTokenOAuth ; ".access_token" ) ] 
+# 
+# store call id param
+Set Variable [ $RingOut_Call_ID ; Value: JSONGetElement ( $$rc.responseRingOut ; ".id" ) ] 
+# 
+# Validate call id parameters
+If [ IsEmpty ( $RingOut_Call_ID ) ] 
+	Perform Script [ Specified: From list ; “[Function]__Get__FM.ErrorDescription( errorCode )” ; Parameter: 1703 ]
+	Set Variable [ $ErrorDescription ; Value: Get ( ScriptResult ) ] 
+	Exit Script [ Text Result: JSONSetElement ( "{}" ; [ "errorCode" ; 1703 ; JSONNumber ] ; [ "error_description" ; $ErrorDescription & ¶ & ¶ & $scriptName ; JSONString ] ; [ "error" ; True ; "" ] ) ] 
+End If
+# 
+# concatenate endpoint
+Set Variable [ $url ; Value: $$rc.baseURL & $$rc.endpointRingOut & "/" & $RingOut_Call_ID ] 
+# 
+# Concatenate entire cURL command
+Set Variable [ $cURL ; Value: " -X GET --header \"Accept: application/json\" --header \"Authorization: Bearer " & $token & "\" & --dump-header \"$$rc.responseRingOutStatusHeader\"" ] 
+# 
+# [HTTP-GET]
+Set Variable [ $$rc.responseRingOutStatusHeader ; Value: "" ] 
+Insert from URL [ Select ; With dialog: Off ; Target: $$rc.responseRingOutStatus ; $url ; Verify SSL Certificates ; cURL options: $cURL ] 
+# 

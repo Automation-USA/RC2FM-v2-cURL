@@ -1,0 +1,33 @@
+# Name:
+[Ring-Out]-New-RingOut-Phone-Call-()
+
+Created by: Julio Toledo - Automation USA LLC
+
+Purpose:
+Tests initiating a RingOut phone call
+
+Important Notes:
+-Requires FileMaker 16+ native JSON functions
+# 
+# validate session tokens
+Perform Script [ Specified: From list ; “[Refresh-Token]-Prolong-Session-( )” ; Parameter:    ]
+# 
+# call ring-out API endpoint to trigger outgoing phone call
+Set Variable [ 
+	$param.json ; 
+	Value: JSONSetElement (
+ 		"{}" ;
+  		[ "fromPhoneNumber" ; "3055551212" ; JSONString ] ; 
+  		[ "toPhoneNum" ; "7865551212" ; JSONString ] ;
+  		[ "callerID" ; "+1305551212" ; JSONString ] ; 
+  		[ "playPromptBoolean" ; False ; JSONBoolean ]
+  	) 
+] 
+Perform Script [ Specified: From list ; “[POST]__RingCentral-RingOut-(param.json)” ; Parameter: $param.json ]
+Set Variable [ $result ; Value: Get (ScriptResult) ] 
+# 
+# refresh call status
+If [ not PatternCount ( $$rc.responseRingOut ; "error" ) ] 
+	Perform Script [ Specified: From list ; “[GET]__RingCentral-RingOut-CallStatus-( )” ; Parameter:    ]
+	Install OnTimer Script [ “[subscript]-[Ring-Out]-Refresh-CallStatus-( )” ; Interval: 4 ] 
+End If

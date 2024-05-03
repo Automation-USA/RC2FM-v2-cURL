@@ -1,0 +1,211 @@
+# Name:
+[POST]__RingCentral-MMS-Send-(param.json)
+
+History:
+Created by: Julio Toledo - Automation USA LLC
+Created: 2020-01-11
+Last Modified: 2024-0311 - Julio Toledo
+Completed code QA
+
+Purpose:
+Creates and sends a new MMS message.
+
+Parameters:
+JSON object with following values: 
+{
+	"from", 
+	"to", //<-- (JSONArray) 
+	"text",
+	"country",
+	"attachments" //<-- (JSONArray)
+}
+- Parameter Definitions: 
+	-"from" (Required. Message sender's phone number, value should be one the account phone numbers allowed to send SMS/MMS messages)
+	-"to" (Required. Array of MMS Message receivers (one or more destination phone numbers).
+	-"text" (Optional. Text of the MMS message. Max length is 1000 symbols (2-byte UTF-16 encoded). 
+	  4-byte encoded UTF-16 charaters are counted as 2 characters, thus restricting the maximum message length to 500 symbols).
+	-"country" (Optional. Target number country information. Either id or isoCode can be specified.)
+	-"attachments" (List of Media file[s] paths to upload. There is a combined size limit of 1.5MB for all attachments per MMS message. There is an API limit of 10 attachments per MMS message.)
+	-"attachment_path" (internal database record path to a FileMaker container field where the fax attachment is stored)
+	-"attachment_mime" (MIME type for a given attachment, for example "image/png" or "application/zip"). 
+	  Supported mime types for MMS can be validated by passing the attachment's file name or file extension 
+	  [e.g. ".png" or "my.Image.Name.png"] to the script: "[Function]__Validate__MIMEtype.MMS( param )"
+	-"attachmentFileName" (full file name of the MMS attachment file to be sent)
+	-"attachmentSize" (file size in bytes of the MMS attachment to be sent. MS attachment size (both single and total) is limited to 1.5Mb)
+
+- Example use:
+	JSONSetElement ( 
+	"{}" ; 
+		[ "from" ; "+13055551212" ; JSONString ] ;
+		[ "to" ; "[{\"phoneNumber\":\"+13055702631\"},{\"phoneNumber\":\"+17865551212\"}, {\"phoneNumber\":\"+19545551212\"}]" ; "" ];
+		[ "text" ; "Hello world! This is my MMS!" ; JSONString ] ;		[ "attachments"; List (GetFieldName ( RC2FM_GLOBALS::tempContainer) ; GetFieldName ( RC2FM_GLOBALS::tempContainer2  ) ; JSONString ]
+	)
+
+Global Variables:
+-Requires valid "$$rc.responseTokenOAuth" JSON object (from API session authentication)
+-Requires "$$rc.accessTokenExpiryTime" global variable 
+
+Reference:
+-https://developers.ringcentral.com/api-reference/SMS/createMMS
+-https://developers.ringcentral.com/guide/messaging/sms/sending-images
+
+Important Notes:
+-Requires FileMaker 16+ native JSON functions
+-Requires access to the FM table(s) [as specified in the "attachment_path" parameter]. 
+ Unlike other API requests, this script extracts data directly from an FM container field rather from JSON.
+ Therefore, the user session [or PSoS session] under which this script is executed will require access to that internal database path.
+
+Set Variable [ $scriptName ; Value: "Script: " & Quote ( Get (ScriptName) ) ] 
+# 
+# Escape if parameter is not supplied
+If [ IsEmpty ( Get (ScriptParameter ) ) ] 
+	Perform Script [ Specified: From list ; “[Function]__Get__FM.ErrorDescription( errorCode )” ; Parameter: 958 ]
+	Set Variable [ $ErrorDescription ; Value: Get ( ScriptResult ) ] 
+	Exit Script [ Text Result: JSONSetElement ( "{}" ; [ "errorCode" ; 958 ; JSONNumber ] ; [ "error_description" ; $ErrorDescription & ¶ & ¶  & $scriptName ; JSONString ] ; [ "error" ; True ; "" ] ) ] 
+End If
+# 
+# validate parameter syntax
+If [ Left ( JSONFormatElements (  Get ( ScriptParameter ) ) ; 1 ) = "?" ] 
+	Perform Script [ Specified: From list ; “[Function]__Get__FM.ErrorDescription( errorCode )” ; Parameter: 1710 ]
+	Set Variable [ $ErrorDescription ; Value: Get ( ScriptResult ) ] 
+	Exit Script [ Text Result: JSONSetElement ( "{}" ; [ "errorCode" ; 1710 ; JSONNumber ] ; [ "error_description" ; "Malformed JSON or " & $ErrorDescription & ¶ & ¶ & $scriptName ; JSONString ] ; [ "error" ; True ; "" ] ) ] 
+End If
+# 
+# store script parameter
+Set Variable [ $param.json ; Value: Get ( ScriptParameter ) ] 
+# 
+# parse JSON
+Set Variable [ $fromPhoneNumber ; Value: JSONGetElement ( $param.json ; "from" ) ] 
+Set Variable [ $toPhoneNum ; Value: JSONGetElement ( $param.json ; "to" ) ] 
+Set Variable [ $text ; Value: JSONGetElement ( $param.json ; "text" ) ] 
+Set Variable [ $attachments ; Value: JSONGetElement ( $param.json ; "attachments" ) ] 
+# 
+# Validate required parameters
+If [ IsEmpty ( $fromPhoneNumber ) or IsEmpty ( $toPhoneNum ) or IsEmpty ( $attachmentPath ) ] 
+	Perform Script [ Specified: From list ; “[Function]__Get__FM.ErrorDescription( errorCode )” ; Parameter: 1703 ]
+	Set Variable [ $ErrorDescription ; Value: Get ( ScriptResult ) ] 
+	Exit Script [ Text Result: JSONSetElement ( "{}" ; [ "errorCode" ; 1703 ; JSONNumber ] ; [ "error_description" ; $ErrorDescription & ¶ & ¶ & $scriptName ; JSONString ] ; [ "error" ; True ; "" ] ) ] 
+	# 
+Else If [ not PatternCount ( $toPhoneNum ; "\"phoneNumber\"") or not PatternCount ( $toPhoneNum ; "[" ) or Left ( JSONGetElement ( $toPhonenum ; ".[0].phoneNumber" ) ; 1 ) = "?" or ValueCount( JSONListValues ( $toPhoneNum ; "." )) < 1 ] 
+	Perform Script [ Specified: From list ; “[Function]__Get__FM.ErrorDescription( errorCode )” ; Parameter: 1710 ]
+	Set Variable [ $ErrorDescription ; Value: Get ( ScriptResult ) ] 
+	Exit Script [ Text Result: JSONSetElement ( "{}" ; [ "errorCode" ; 1710 ; JSONNumber ] ; [ "error_description" ; $ErrorDescription & ¶ & ¶ & $scriptName ; JSONString ] ; [ "error" ; True ; "" ] ) ] 
+	# 
+Else If [ ValueCount( JSONListValues ( $toPhoneNum ; "." ) ) > 40 ] 
+	Perform Script [ Specified: From list ; “[Function]__Get__FM.ErrorDescription( errorCode )” ; Parameter: 1708 ]
+	Set Variable [ $ErrorDescription ; Value: Get ( ScriptResult ) ] 
+	Exit Script [ Text Result: JSONSetElement ( "{}" ; [ "errorCode" ; 1710 ; JSONNumber ] ; [ "error_description" ; "Number of \"to\" receivers exceeds API limit of 40. " & $ErrorDescription & ¶ & ¶ & $scriptName ; JSONString ] ; [ "error" ; True ; "" ] ) ] 
+	# 
+Else If [ not PatternCount ( $attachments ; "::") ] 
+	# validate FM database field path param is well formatted
+	Perform Script [ Specified: From list ; “[Function]__Get__FM.ErrorDescription( errorCode )” ; Parameter: 1209 ]
+	Set Variable [ $ErrorDescription ; Value: Get ( ScriptResult ) ] 
+	Exit Script [ Text Result: JSONSetElement ( "{}" ; [ "errorCode" ; 1710 ; JSONNumber ] ; [ "error_description" ; "Invalid attachment FM field path. " & $ErrorDescription & ¶ & ¶ & $scriptName ; JSONString ] ; [ "error" ; True ; "" ] ) ] 
+End If
+# 
+# validate and accumulate attachment binaries
+Set Variable [ $i ; Value: 0 ] 
+Set Variable [ $attachmentCount ; Value: ValueCount ( $attachments ) ] 
+Set Variable [ $combinedFileSize ; Value: 0 ] 
+Set Variable [ $attachmentList ; Value: "" ] 
+Loop
+	Exit Loop If [ Let ( $i = $i + 1 ; $i > $attachmentCount ) ] 
+	Set Variable [ $aContainerField ; Value: Substitute ( GetValue ( $attachments ; $i ) ; ¶ ; "" ) ] 
+	# 
+	# validate FM database field is valid
+	If [ not IsValid ( $aContainerField ) ] 
+		Perform Script [ Specified: From list ; “[Function]__Get__FM.ErrorDescription( errorCode )” ; Parameter: 1209 ]
+		Set Variable [ $ErrorDescription ; Value: Get ( ScriptResult ) ] 
+		Exit Script [ Text Result: JSONSetElement ( "{}" ; [ "errorCode" ; 1209 ; JSONNumber ] ; [ "error_description" ; $ErrorDescription & ¶ & ¶ & $scriptName ; JSONString ] ; [ "error" ; True ; "" ] ) ] 
+	End If
+	# 
+	# validate FM database field != null (missing attachment)
+	If [ IsEmpty ( GetField ( GetFieldName ( $aContainerField ) ) ) ] 
+		Perform Script [ Specified: From list ; “[Function]__Get__FM.ErrorDescription( errorCode )” ; Parameter: 510 ]
+		Set Variable [ $ErrorDescription ; Value: Get ( ScriptResult ) ] 
+		Exit Script [ Text Result: JSONSetElement ( "{}" ; [ "errorCode" ; 510 ; JSONNumber ] ; [ "error_description" ; "\"" & $aContainerField & "\" is empty. " & $ErrorDescription & ¶ & ¶ & $scriptName ; JSONString ] ; [ "error" ; True ; "" ] ) ] 
+	End If
+	# 
+	# validate attachments file size <= max size
+	Set Variable [ $combinedFileSize ; Value: $combinedFileSize + GetContainerAttribute ( GetField  ( GetFieldName ( $aContainerField ) ); "fileSize" ) ] 
+	If [ $combinedFileSize > 1556760 ] 
+		Perform Script [ Specified: From list ; “[Function]__Get__FM.ErrorDescription( errorCode )” ; Parameter: 511 ]
+		Set Variable [ $ErrorDescription ; Value: Get ( ScriptResult ) ] 
+		Exit Script [ Text Result: JSONSetElement ( "{}" ; [ "errorCode" ; 511 ; JSONNumber ] ; [ "error_description" ; "Attachment(s) exceed maximum of 1.5 Mb." & $ErrorDescription & ¶ & ¶ & $scriptName ; JSONString ] ; [ "error" ; True ; "" ] ) ] 
+	End If
+	# 
+	# validate attachment MIME type
+	Set Variable [ $attachmentFileName ; Value: GetContainerAttribute ( GetField  ( GetFieldName ( $aContainerField  ) ); "fileName" ) ] 
+	Set Variable [ $fileExtension ; Value: "." & Substitute ( 	RightValues ( Substitute ( $attachmentFileName ; "." ; ¶ ) ; 1 ) ; 	¶ ; "" ) ] 
+	Perform Script [ Specified: From list ; “[Function]__Validate__MIMEtype.MMS( param )” ; Parameter: $fileExtension ]
+	Set Variable [ $attachment_mime ; Value: Get ( ScriptResult ) ] 
+	If [ $attachment_mime = "417" ] 
+		Show Custom Dialog [ "error" ; "Attachments of file type \"" & $fileExtension & "\" are not supported by RingCentral® MMS" ] 
+		Exit Script [ Text Result: JSONSetElement ( "{}" ; [ "errorCode" ; 503 ; JSONNumber ] ; [ "error_description" ; "Attachments of file type \"" & $fileExtension & "\" are not supported." & ¶ & ¶ & $scriptName ; JSONString ] ; [ "error" ; True ; "" ] ) ] 
+	Else If [ $attachment_mime = "400" ] 
+		Exit Script [ Text Result: JSONSetElement ( "{}" ; [ "errorCode" ; 509 ; JSONNumber ] ; [ "error_description" ; "Unable to determine attachment file type. " & ¶ & ¶ & $scriptName ; JSONString ] ; [ "error" ; True ; "" ] ) ] 
+	End If
+	# 
+End Loop
+# 
+# Accumulate cURL -F commands
+Set Variable [ $i ; Value: 0 ] 
+Set Variable [ $cURLBinariesList ; Value: "" ] 
+Set Variable [ $attachmentCount ; Value: ValueCount ( $attachments ) ] 
+Loop
+	Exit Loop If [ Let ( $i = $i + 1 ; $i > $attachmentCount ) ] 
+	Set Variable [ $aContainerField ; Value: Substitute ( GetValue ( $attachments ; $i ) ; ¶ ; "" ) ] 
+	# 
+	Set Variable [ $attachmentFileName ; Value: GetContainerAttribute ( GetField  ( GetFieldName ( $aContainerField  ) ); "fileName" ) ] 
+	Set Variable [ $fileExtension ; Value: "." & Substitute ( 	RightValues ( Substitute ( $attachmentFileName ; "." ; ¶ ) ; 1 ) ; 	¶ ; "" ) ] 
+	Set Variable [ $attachmentContent ; Value: GetField ( GetFieldName ( $aContainerField ) ) ] 
+	# Look up attachment MIME-type
+	Perform Script [ Specified: From list ; “[Function]__Validate__MIMEtype.MMS( param )” ; Parameter: $fileExtension ]
+	Set Variable [ $attachment_mime ; Value: Get ( ScriptResult ) ] 
+	# concatenate cURL -F commands
+	Set Variable [ $cURLbinariesList ; Value: If ( 
+		IsEmpty ( $cURLbinariesList ) ; 	
+	
+		//result1 (initialize list)
+		"-F \"attachment=@$attachmentContent;type=" & $attachment_mime & ";filename=" & $attachmentFileName & "\"" ; 
+	
+		//result2 (append to list)
+		List ( 	
+			$cURLbinariesList ; 
+			"-F \"attachment=@$attachmentContent;type=" & $attachment_mime & ";filename=" & $attachmentFileName & "\""
+		)	
+	 ) 
+	] 
+End Loop
+# 
+# validate API token
+Set Variable [ $tokenTimeLeft ; Value: GetAsNumber ( Get ( CurrentHostTimestamp ) - GetAsTimestamp ( $$rc.accessTokenExpiryTime ) ) ] 
+If [ $tokenTimeLeft > -60 ] 
+	Perform Script [ Specified: From list ; “[POST]__RingCentral-Refresh-Token-[Prolong-Session]-( )” ; Parameter:    ]
+End If
+Set Variable [ $token ; Value: JSONGetElement ( $$rc.responseTokenOAuth ; ".access_token" ) ] 
+# 
+# concatenate endpoint URL
+Set Variable [ $url ; Value: $$rc.baseURL & $$rc.endpointMMS ] 
+# 
+# pass supplied JSON parameter to cURL body (payload)
+Set Variable [ $json ; Value: JSONDeleteElement ( $param.json ; "attachments" ) ] 
+# 
+# Concatenate entire cURL command
+Set Variable [ $cURL ; Value: "-X POST 
+	--header \"Accept: application/json\" 
+	--header \"Authorization: Bearer " & $token & "\"
+	--header \"Content-Type: multipart/mixed\"
+	--header \"User-Agent: " & $$rc.userAgent & "\"
+	--dump-header \"$$rc.responseMMS.send.Header\"
+	
+	-F \"request=@$json;type=application/json\"
+	" & $cURLbinariesList
+] 
+# 
+# clear SMS global var
+Set Variable [ $$rc.responseSMS.send ; Value: "" ] 
+# 
+# [HTTP-POST]
+Insert from URL [ Select ; With dialog: Off ; Target: $$rc.responseSMS.send ; $url ; Verify SSL Certificates ; cURL options: $cURL ] 
+# 

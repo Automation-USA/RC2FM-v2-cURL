@@ -1,0 +1,161 @@
+# Name:
+[Function]__GetFileSize ($param.json)
+
+History:
+Created by: Julio Toledo - Automation USA LLC
+Created: 2020-01-11
+Last Modified: 2023-1111 - Julio Toledo
+Completed code QA
+
+Purpose:
+• Rounds bytes to the nearest order of magnitude ( up to the Yottabyte level ) at the requested precision [defaults to 0 decimal places] . 
+• Optionally appends "short-form" ( "MB" ) or  "long-form" ( "Megabytes" ) unit label [defaults to <null>]. 
+• Provides option to use metric ( 1000 bytes ) or binary (1024 bytes ) unit of measure [defaults to binary].
+
+EXAMPLES:
+Input:	GetFileSize ( Get ( FileSize )  ; 2 ; "" ; "long" )
+Output:	"1.35 Gigabytes" - where Get ( FileSize ) = 1447866368 bytes
+
+Input:	GetFileSize ( Get ( FileSize )  ; 2 ; "metric" ; "long" )
+Output:	"1.45 Gigabytes" - where Get ( FileSize ) = 1447866368 bytes
+
+Input: 	GetFileSize ( Get ( FileSize )  ; "" ; "" ; "s" )
+Output:	"411 MB" - where Get ( FileSize ) = 430714880 bytes
+
+HISTORY:
+2015-10-23  Julio Toledo - Automation USA ( https://www.automationusa.net ). Function originally employed hardcoded binary values and forcibly appended "short form" unit label.
+2015-10-31  Julio Toledo - Added "UOM" parameter to optionally use metric standard ( 1000 bytes ).
+2015-10-31  Julio Toledo - Added "Format" parameter to optionally append unit label.
+2015-10-31  Julio Toledo - Optimized case statement for "Label" variable as per contributions by "Bruce, from Redmond WA". ( Thank you Bruce ).
+2015-10-31  Julio Toledo - Optimized "Size" evaluation based on "Magnitude" logarithmic code from Jeremy Bante's "ByteSize" custom function ( http://www.briandunning.com/cf/1447 , https://github.com/jbante/ )
+------------------
+- Example parameter use:
+	JSONSetElement ( 
+		"{}" ; 
+		[ "Bytes" ; Get ( FileSize ) ; JSONNumber ] ;
+		[ "UOM" ; "Binary" ; JSONString ] ;
+		[ "precision" ; 2 ; JSONNumber ] ;
+		[ "format" ; "Short" ; JSONString ] <-- Optional, exclude this object to return only numbers (double)
+	)
+
+Set Variable [ $scriptName ; Value: "Script: " & Quote ( Get (ScriptName) ) ] 
+# 
+# Escape if parameter is not supplied
+If [ IsEmpty ( Get (ScriptParameter ) ) ] 
+	Perform Script [ Specified: From list ; “[Function]__Get__FM.ErrorDescription( errorCode )” ; Parameter: 958 ]
+	Set Variable [ $ErrorDescription ; Value: Get ( ScriptResult ) ] 
+	Exit Script [ Text Result: JSONSetElement ( "{}" ; [ "errorCode" ; 958 ; JSONNumber ] ; [ "error_description" ; $ErrorDescription & ¶ & ¶  & $scriptName ; JSONString ] ; [ "error" ; True ; "" ] ) ] 
+End If
+# 
+# validate parameter syntax
+If [ Left ( JSONFormatElements (  Get ( ScriptParameter ) ) ; 1 ) = "?" ] 
+	Perform Script [ Specified: From list ; “[Function]__Get__FM.ErrorDescription( errorCode )” ; Parameter: 1710 ]
+	Set Variable [ $ErrorDescription ; Value: Get ( ScriptResult ) ] 
+	Exit Script [ Text Result: JSONSetElement ( "{}" ; [ "errorCode" ; 1710 ; JSONNumber ] ; [ "error_description" ; "Malformed JSON or " & $ErrorDescription & ¶ & ¶ & $scriptName ; JSONString ] ; [ "error" ; True ; "" ] ) ] 
+End If
+# 
+# store script parameter
+Set Variable [ $param.json ; Value: Get ( ScriptParameter ) ] 
+# 
+# parse JSON
+Set Variable [ $Bytes ; Value: JSONGetElement ( $param.json ; "Bytes" ) ] 
+Set Variable [ $UOM ; Value: JSONGetElement ( $param.json ; "UOM" ) ] 
+Set Variable [ $precision ; Value: JSONGetElement ( $param.json ; "precision" ) ] 
+Set Variable [ $Format ; Value: JSONGetElement ( $param.json ; "format" ) ] 
+# 
+# Validate required parameters
+If [ IsEmpty ( Filter ( $Bytes ; "0123456789" ) ) or not IsValid ( GetAsNumber ( $Bytes ) ) ] 
+	Perform Script [ Specified: From list ; “[Function]__Get__FM.ErrorDescription( errorCode )” ; Parameter: 1703 ]
+	Set Variable [ $ErrorDescription ; Value: Get ( ScriptResult ) ] 
+	Exit Script [ Text Result: JSONSetElement ( "{}" ; [ "errorCode" ; 1703 ; JSONNumber ] ; [ "error_description" ; $ErrorDescription & ¶ & ¶ & $scriptName ; JSONString ] ; [ "error" ; True ; "" ] ) ] 
+End If
+# 
+# return calculation result
+Exit Script [ Text Result: Let ( [ 
+
+	RawBytes = Int ( $Bytes ) ; 
+	
+	Unit =	Case (
+	
+				IsEmpty ( $UOM ) ; 1024 ;
+				$UOM = "metric" or $UOM = "M"; 1000 ; 
+				$UOM = "binary" or $UOM = "B" ; 1024 ; 
+				$UOM = "1000"  or $UOM = 1024 ; $UOM ; 
+				//defaultResult
+				1024
+	
+			) ; //end Case
+	
+	Kilobyte = Unit ;
+	Megabyte = ( Kilobyte  ^  2 ) ;
+	Gigabyte = ( Kilobyte  ^  3 ) ;
+	Terabyte = ( Kilobyte  ^  4 ) ;
+	Petabyte = ( Kilobyte  ^  5 ) ;
+	Exabyte = ( Kilobyte  ^  6 ) ;
+	Zettabyte = ( Kilobyte  ^  7 ) ;
+	Yottabyte = ( Kilobyte  ^  8 ) ;
+	
+	
+	Decimals = If ( IsEmpty ( $precision ) ; 
+	
+				0 ; 
+				Abs ( Int ( $precision ) ) 
+	
+			   ) ; //end If
+	
+	Magnitude = Floor ( Ln ( RawBytes ) / Ln ( Unit ) ) ;
+	Magnitude = Min ( Magnitude ; 8 ) ;	// don't exceed known magnitude units
+	Magnitude = Unit  ^  Magnitude  ;
+	
+	Label = 	Case (
+	
+				IsEmpty ( $Format ) ; "" ;
+				$Format = "long" or $Format = "L" ; 
+						Case ( 
+	
+							RawBytes ≥ Yottabyte ; "Yottabyte" ;
+							RawBytes ≥ Zettabyte ; "Zettabyte" ;
+							RawBytes ≥ Exabyte ; "Exabyte" ;
+							RawBytes ≥ Petabyte ; "Petabyte" ;
+							RawBytes ≥ Terabyte ; "Terabyte" ;
+							RawBytes ≥ Gigabyte ; "Gigabyte" ;
+							RawBytes ≥ Megabyte ; "Megabyte" ;
+							RawBytes ≥ Kilobyte ; "Kilobyte" ;
+							//defaultResult
+							"Byte"
+	
+						) ; //end Case
+	
+	
+				$Format = "short" or $Format = "S" ; 
+						Case ( 
+	
+							RawBytes ≥ Yottabyte ; "YB" ;
+							RawBytes ≥ Zettabyte ; "ZB" ;
+							RawBytes ≥ Exabyte ; "EB" ;
+							RawBytes ≥ Petabyte ; "PB" ;
+							RawBytes ≥ Terabyte ; "TB" ;
+							RawBytes ≥ Gigabyte ; "GB" ;
+							RawBytes ≥ Megabyte ; "MB" ;
+							RawBytes ≥ Kilobyte ; "KB" ;
+							//defaultResult
+							"B"
+	
+						) ; //end Case
+	
+				//defaultResult
+				""
+	
+	
+			) ; //end Case
+	
+	
+	Size = Round ( RawBytes/Magnitude ; Decimals ) 
+	
+	] ; 
+	
+	//calculation
+	Size & " " & If ( Left ( $Format ; 1 ) = "L" and Size ≠ 1 ; Label & "s" ; Label )
+	
+	 ) //end Let
+] 

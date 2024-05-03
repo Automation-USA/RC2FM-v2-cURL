@@ -1,0 +1,26 @@
+# Name:
+[Function]__Get__UTC.Offset()
+
+History:
+Created by: Julio Toledo - Automation USA LLC
+Created: 2020-01-11
+Last Modified: 2023-1111 - Julio Toledo
+Completed code QA
+
+Purpose:
+Implements Custom Function: "UTCOffset" as a script.
+------------------
+/*
+ * UTCOffset
+ * @return The offset from UTC of the current device clock, in seconds.
+ *
+ * @history 2012-05-18 - Jeremy Bante <http://scr.im/jbante> - Created
+ * @history 2013-12-13 - Jeremy Bante <http://scr.im/jbante> - Using new
+ * Get ( CurrentTimeUTCMilliseconds ) function in FileMaker 13.
+ * @history 2014-04-03 - Jeremy Bante <http://scr.im/jbante> - Using Floor
+ * instead of Round, as recommended by Jesse Barnum.
+ * https://github.com/jbante/
+*/
+------------------
+
+Exit Script [ Text Result: Get ( CurrentTimestamp ) - Floor ( Get ( CurrentTimeUTCMilliseconds ) / 1000 ) ] 

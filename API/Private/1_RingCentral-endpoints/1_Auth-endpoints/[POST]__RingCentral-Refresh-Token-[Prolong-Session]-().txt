@@ -1,0 +1,60 @@
+# Name:
+[POST]__RingCentral-Refresh-Token-[Prolong-Session]-()
+
+History:
+Created by: Julio Toledo - Automation USA LLC
+Created: 2020-01-11
+Last Modified: 2023-1111 - Julio Toledo
+Completed code QA
+
+Purpose:
+Renews session token using Refresh Token Flow
+
+Parameters: None
+
+Global Variables:
+-Requires valid "$$rc.responseTokenOAuth" JSON object (this is the target of 'Insert from URL' command in script "[POST]__RingCentral-Get-Token-[Login]-(param.json)")
+-Requires "$$rc.accessTokenExpiryTime" (this stores a value caclulated at login time in script "[POST]__RingCentral-Get-Token-[Login]-(param.json)")
+-Requires "$$rc.tokenTTL" (this is a setting in script "[Function]__Init__RingCentral.API.Environment()") 
+
+Reference:
+https://developers.ringcentral.com/api-reference/Get-Token
+
+Important Notes:
+-Requires FileMaker 16+ native JSON functions
+
+Set Variable [ $scriptName ; Value: "Script: " & Quote ( Get (ScriptName) ) ] 
+# 
+# Validate required global variables
+If [ IsEmpty ( $$rc.responseTokenOAuth ) or IsEmpty ( $$rc.tokenTTL ) ] 
+	Perform Script [ Specified: From list ; “[Function]__Get__FM.ErrorDescription( errorCode )” ; Parameter: 958 ]
+	Set Variable [ $ErrorDescription ; Value: Get ( ScriptResult ) ] 
+	Exit Script [ Text Result: JSONSetElement ( "{}" ; [ "errorCode" ; 958 ; JSONNumber ] ; [ "error_description" ; $ErrorDescription ; JSONString ] ; [ "error" ; True ; "" ] ) ] 
+End If
+# 
+Set Variable [ $refresh_token ; Value: JSONGetElement ( $$rc.responseTokenOAuth ; "refresh_token" ) ] 
+Set Variable [ $$rc.responseTokenOAuth.Revoke ; Value: "" ] 
+# 
+# Concatenate entire cURL command
+Set Variable [ $cURL ; Value: Let ( [ cURL = 
+	"-X POST 
+	--header \"Content-Type: application/x-www-form-urlencoded\"
+	--header \"Accept: application/json\"
+	--header \"Authorization: Basic " & $BasicAuth & "\"" & "
+	--header \"User-Agent: " & $$rc.userAgent & "\"
+	
+	--dump-header \"$$rc.responseTokenOAuthHeader\"
+	 
+	-d \"grant_type=refresh_token&access_token_ttl=" & $$rc.tokenTTL & "&refresh_token=" & $refresh_token & "\""	
+	] ; 
+	
+	Substitute ( cURL ; [Char ( "10" ); ""];[Char ( "13" ); ""]; [Char ( "¶" ); ""]) 
+	
+	)
+] 
+# 
+# concatenate endpoint
+Set Variable [ $url ; Value: $$rc.baseURL & $$rc.endpointToken ] 
+# 
+# [HTTP-POST]
+Insert from URL [ Select ; With dialog: Off ; Target: $$rc.responseTokenOAuth ; $url ; Verify SSL Certificates ; cURL options: $cURL ] 

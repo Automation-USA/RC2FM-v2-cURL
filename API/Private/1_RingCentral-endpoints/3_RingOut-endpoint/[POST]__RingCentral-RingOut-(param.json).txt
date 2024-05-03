@@ -1,0 +1,128 @@
+# Name:
+[POST]__RingCentral-RingOut-(param.json)
+
+History:
+Created by: Julio Toledo - Automation USA LLC
+Created: 2020-01-11
+Last Modified: 2023-0715 - Julio Toledo
+Completed code QA
+
+Purpose:
+Makes a 2-legged RingOut call.
+
+Parameters:
+JSON object with following values: 
+{
+	"fromPhoneNumber", 
+	"toPhoneNum", 
+	"callerID",
+	"playPromptBoolean", 
+	"country"
+}
+- Parameter Definitions: 
+	-"fromPhoneNumber" (Phone number of the caller, corresponds to the 1st leg of a RingOut call; may be any arbitrary phone number)
+	-"toPhoneNum" (Phone number of the called party, corresponds to the 2nd leg of a RingOut call)
+	-"callerID" (Company phone number which will be displayed to the called party)
+	-"playPromptBoolean" (Required [boolean] option to play an audio prompt to the caller when the RingOut call is connected)
+	-"country" (Optional [string] value representing dialing plan country, defaults to the user's home country)
+
+- Example use:
+	JSONSetElement ( 
+		"{}" ; 
+		[ "fromPhoneNumber" ; "305-555-1212" ; JSONString ] ;
+		[ "toPhoneNum" ; "786-555-1212" ; JSONString ] ;
+		[ "callerID" ; "+13055551212" ; JSONString ] ; <-- caller ID number must be in e.164 format
+		[ "playPromptBoolean" ; True ; JSONBoolean ]
+	)
+
+Global Variables:
+-Requires valid "$$rc.responseTokenOAuth" JSON object (from API session authentication)
+-Requires "$$rc.accessTokenExpiryTime" global variable 
+
+Reference:
+-https://developers.ringcentral.com/api-reference/RingOut/createRingOutCall
+-https://developers.ringcentral.com/guide/voice/ringout
+
+Important Notes:
+-Requires FileMaker 16+ native JSON functions
+
+Set Variable [ $scriptName ; Value: "Script: " & Quote ( Get (ScriptName) ) ] 
+# 
+# Escape if parameter is not supplied
+If [ IsEmpty ( Get (ScriptParameter ) ) ] 
+	Perform Script [ Specified: From list ; “[Function]__Get__FM.ErrorDescription( errorCode )” ; Parameter: 958 ]
+	Set Variable [ $ErrorDescription ; Value: Get ( ScriptResult ) ] 
+	Exit Script [ Text Result: JSONSetElement ( "{}" ; [ "errorCode" ; 958 ; JSONNumber ] ; [ "error_description" ; $ErrorDescription & ¶ & ¶  & $scriptName ; JSONString ] ; [ "error" ; True ; "" ] ) ] 
+End If
+# 
+# validate parameter syntax
+If [ Left ( JSONFormatElements (  Get ( ScriptParameter ) ) ; 1 ) = "?" ] 
+	Perform Script [ Specified: From list ; “[Function]__Get__FM.ErrorDescription( errorCode )” ; Parameter: 1710 ]
+	Set Variable [ $ErrorDescription ; Value: Get ( ScriptResult ) ] 
+	Exit Script [ Text Result: JSONSetElement ( "{}" ; [ "errorCode" ; 1710 ; JSONNumber ] ; [ "error_description" ; "Malformed JSON or " & $ErrorDescription & ¶ & ¶ & $scriptName ; JSONString ] ; [ "error" ; True ; "" ] ) ] 
+End If
+# 
+# store script parameter
+Set Variable [ $param.json ; Value: Get ( ScriptParameter ) ] 
+# 
+# parse JSON
+Set Variable [ $fromPhoneNumber ; Value: JSONGetElement ( $param.json ; "fromPhoneNumber" ) ] 
+Set Variable [ $countryID ; Value: JSONGetElement ( $param.json ; "country" ) ] 
+Set Variable [ $toPhoneNum ; Value: JSONGetElement ( $param.json ; "toPhoneNum" ) ] 
+Set Variable [ $callerID ; Value: JSONGetElement ( $param.json ; "callerID" ) ] 
+Set Variable [ $playPromptBoolean ; Value: JSONGetElement ( $param.json ; "playPromptBoolean" ) ] 
+# 
+# Validate required parameters
+If [ IsEmpty ( $fromPhoneNumber ) or IsEmpty ( $toPhoneNum ) or IsEmpty ( $callerID ) or IsEmpty ( $playPromptBoolean ) ] 
+	Perform Script [ Specified: From list ; “[Function]__Get__FM.ErrorDescription( errorCode )” ; Parameter: 1703 ]
+	Set Variable [ $ErrorDescription ; Value: Get ( ScriptResult ) ] 
+	Exit Script [ Text Result: JSONSetElement ( "{}" ; [ "errorCode" ; 1703 ; JSONNumber ] ; [ "error_description" ; $ErrorDescription & ¶ & ¶ & $scriptName ; JSONString ] ; [ "error" ; True ; "" ] ) ] 
+End If
+# 
+# validate API token
+Set Variable [ $tokenTimeLeft ; Value: GetAsNumber ( Get ( CurrentHostTimestamp ) - GetAsTimestamp ( $$rc.accessTokenExpiryTime ) ) ] 
+If [ $tokenTimeLeft > -60 ] 
+	Perform Script [ Specified: From list ; “[POST]__RingCentral-Refresh-Token-[Prolong-Session]-( )” ; Parameter:    ]
+End If
+Set Variable [ $token ; Value: JSONGetElement ( $$rc.responseTokenOAuth ; ".access_token" ) ] 
+# 
+# concatenate endpoint URI
+Set Variable [ $url ; Value: $$rc.baseURL & $$rc.endpointRingOut ] 
+# 
+# concatenate cURL body (JSON payload)
+Set Variable [ $jsonBody ; Value: Let ( [
+		$json = JSONFormatElements ( 	
+		JSONSetElement 
+			( 
+				"{}" ;
+				["from" ; "{\"phoneNumber\" : " & Quote ($fromPhoneNumber) & "}" ; JSONObject ] ;
+				["to" ; "{ \"phoneNumber\" : " &  Quote ($toPhoneNum) & "} " ; JSONObject ] ;
+				["callerId" ; "{ \"phoneNumber\" : " &  Quote ($callerID) & "} " ; JSONObject ] ;
+				["playPrompt" ; $playPromptBoolean ; JSONBoolean ] ;
+				["country" ; $country ; JSONString ] 
+			)
+	
+		) ;
+	
+		$json = If ( IsEmpty ( $countryID ) ; 
+				JSONDeleteElement ( $json ; "country" ) 
+				) 
+	
+		] ;
+	
+		//calculation
+		$json 
+	
+	)
+] 
+# 
+# Concatenate entire cURL command
+Set Variable [ $cURL ; Value: "-X POST --header \"Content-Type: application/json\" --header \"Accept: application/json\" --header \"Authorization: Bearer " & $token & "\" & --dump-header \"$$rc.responseRingOutHeader\" & -d @$jsonBody" ] 
+# 
+# clear ringout global vars
+Set Variable [ $$rc.responseRingOut ; Value: "" ] 
+Set Variable [ $$rc.responseRingOutHeader ; Value: "" ] 
+# 
+# [HTTP-POST]
+Insert from URL [ Select ; With dialog: Off ; Target: $$rc.responseRingOut ; $url ; Verify SSL Certificates ; cURL options: $cURL ] 
+# 

@@ -1,0 +1,69 @@
+# Name:
+[MMS]-Send-MMS-()
+
+Created by: Julio Toledo - Automation USA LLC
+
+Purpose:
+Tests sending an MMS message
+
+Important Notes:
+-Requires FileMaker 16+ native JSON functions
+-This unit test requires FileMaker's native "While" function (FileMaker versions 18+)
+-This unit test feeds off hard-coded sample data stored in table "RC2M_GLOBALS" inside several global-storage fields (e.g. "RC2FM_GLOBALS::tempContainer2")
+
+# SMS message body
+// Set Variable [ $originalText ; Value: RC2FM_GLOBALS::smsText ] 
+Set Variable [ $originalText ; Value: "Hello world!¶This is my SMS test!" ] 
+Set Variable [ $messageText ; Value: Substitute ( $originalText ; [Char ( "10" ); "\n" ]; [Char ( "13" ); "\n" ] ; [ Char ( "¶" ); "\n" ] ) ] 
+# 
+# SMS sender's phone number (e.g. *your* RingCentral phone number)
+Set Variable [ $fromPhoneNum ; Value: $$MainCompanyNumber ] 
+# 
+// # Single MMS recipient (single destination phone number)
+// Set Variable [ $toPhones ; Value: "+13055551212" ] 
+# multiple MMS recipients (a group of destination phone numbers)
+Set Variable [ $toPhones ; Value: List ( "+13055551212" ; "+17865551212"; "+19545551212" ) ] 
+# 
+# JSON encode parameter (requires FileMaker native "While" function (available in versions 18+)
+Set Variable [ 
+	$param.json ; 
+	Value: While ( 
+			//initialVariable(s)
+			[ 
+				fromNum = $fromPhoneNum ;
+				numList = $toPhones;
+				json = JSONSetElement ( 
+					"{}" ;
+					[ "from" ; fromNum ; JSONString ];
+					[ "text" ; $messagetext ; JSONString ]
+				 ) ; 
+				i = -1 ] ; 
+	
+			//condition
+			i < ValueCount ( numList ) -1 ;
+	
+			//logic
+			[
+				i = i + 1 ; //iterate from 0
+				aNum = GetValue ( numList ; i+1 ) ;
+				obj = JSONSetElement ( "{}" ; "phoneNumber" ; aNum ; JSONString );
+				json = JSONSetElement ( json ; "to[" & i & "]" ; obj ; JSONObject )
+			] ; 
+	
+			//result (append attachments list)
+			JSONSetElement ( 
+				json ; 
+				[ "attachments"; 
+					List (
+						GetFieldName ( RC2FM_GLOBALS::tempContainer ) ; 
+						GetFieldName ( RC2FM_GLOBALS::tempContainer2) 
+					) ; 
+					JSONString 
+				] 
+			)
+	)
+] 
+# 
+# call MMS API endpoint
+Perform Script [ Specified: From list ; “[POST]__RingCentral-SMS-Send-(param.json)” ; Parameter: $param.json ]
+Set Variable [ $result ; Value: Get (ScriptResult) ] 

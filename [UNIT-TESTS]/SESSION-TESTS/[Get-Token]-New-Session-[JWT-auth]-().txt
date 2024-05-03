@@ -1,0 +1,46 @@
+# Name:
+[Get-Token]-New-Session-[JWT-auth]-()
+
+Created by: Julio Toledo - Automation USA LLC
+
+Purpose:
+Tests initating a new API session using the JWT auth flow authentication process
+
+Parameters:
+None
+
+Global Variables:
+-Requires "$$rc.applicationMode" (an environment setting from script "[Function]__Init__RingCentral.API.Environment()")
+
+Important Notes:
+-Requires FileMaker 16+ native JSON functions
+-Requires global variable "$$jwt" 
+ (obtained by visiting https://developers.ringcentral.com/console/my-credentials/create?client_id=<YOUR RINGCENTRAL API-APP ID [AKA CLIENT ID]>)
+
+# Specify user login credentials for each environment (using phone number as username)
+# 
+# call Get-Token API endpoint using JTW auth flow
+Perform Script [ Specified: From list ; “[POST]__RingCentral-Get-Token-[New-Session]-( )” ; Parameter:    ]
+Set Variable [ $result ; Value: Get (ScriptResult) ] 
+# 
+# validate script result
+If [ PatternCount ( $result ; "error" ) ] 
+	Set Variable [ 
+	$customDialog.json ; 
+	Value: JSONSetElement ( 	
+		"{}" ; 	
+		["title" ; "Error: " & JSONGetElement ( $result ; "errorCode" ) ; JSONString] ; 	
+		["message" ; "Message: " & JSONGetElement ( $result ; "error_description" ) ; JSONString] 
+		) 
+	] 
+	Perform Script [ Specified: From list ; “[Subscript]__UI__Show.CustomDialog( param.json )” ; Parameter: $customDialog.json ]
+	Exit Script [ Text Result: False ] 
+End If
+# 
+# If authentication was successful, call additional [GET] endpoints to fetch account info and user phone numbers
+If [ PatternCount ( $$rc.responseTokenOAuth ; "access_token" ) ] 
+	If [ PatternCount ( $$rc.responseTokenOAuth ; "access_token" ) ] 
+		Perform Script [ Specified: From list ; “[GET]__RingCentral-Account-Info-( )” ; Parameter:    ]
+		Perform Script [ Specified: From list ; “[GET]__RingCentral-User-PhoneNumbers-( )” ; Parameter:    ]
+	End If
+End If

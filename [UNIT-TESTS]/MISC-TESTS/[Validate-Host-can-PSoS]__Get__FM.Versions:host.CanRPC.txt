@@ -1,0 +1,22 @@
+# [Validate-Host-can-PSoS]__Get__FM.Versions/host.CanRPC
+
+Perform Script [ Specified: From list ; “[Function]__Get__FM.Version.Major( string )” ; Parameter:  Get ( ApplicationVersion ) ]
+Set Variable [ $major ; Value: Get ( ScriptResult ) ] 
+Perform Script [ Specified: From list ; “[Function]__Get__FM.Version.Minor( string )” ; Parameter:  Get ( ApplicationVersion ) ]
+Set Variable [ $minor ; Value: Get ( ScriptResult ) ] 
+# 
+Perform Script [ Specified: From list ; “[Function]__Validate__FM.host.canRPC( )” ; Parameter:    ]
+Set Variable [ $result ; Value: Get ( ScriptResult ) ] 
+# 
+Set Variable [ 
+	$listResult ; 
+	Value: List ( 
+		"isHosted: " & If ( Get ( ConnectionState ) = 0 ; "False" ; "True" );
+		"Version: " & If ( Get ( ConnectionState ) = 0 ; Get ( ApplicationVersion ) ; Get (HostApplicationVersion) ) ;
+		"Major: " & $major ; 
+		"Minor: " & $minor ; 
+		"can RPC: " & If ( $result = True ; "True" ; "False" )
+	)
+] 
+// Show Custom Dialog [ $listResult ] 
+Exit Script [ Text Result: $listResult ] 

@@ -1,0 +1,21 @@
+# [Function]__JSONparse__RC.AccountPhoneNumbers($$rc.responseAccountExtensions)
+
+Allow User Abort [ Off ]
+Set Variable [ $ExtensionCount ; Value: JSONGetElement ( $$rc.responseAccountExtensions ; ".paging.totalElements" ) ] 
+Set Variable [ $startingValue ; Value: JSONGetElement ( $$rc.responseAccountExtensions ; ".paging.pageStart" ) ] 
+# 
+Set Variable [ $LoopCounter ; Value: $startingValue ] 
+Loop
+	Set Variable [ $recordNum ; Value: ".records[" & $LoopCounter ] 
+	# 
+	Set Variable [ $aNumber ; Value: JSONGetElement ( $$rc.responseAccountExtensions ; $recordNum & ".phoneNumber" ) ] 
+	Set Variable [ $theLabel ; Value: "extension"  & JSONGetElement ( $$rc.responseAccountExtensions ; $recordNum & ".extension.extensionNumber" ) ] 
+	Set Variable [ $NameValuePair ; Value: Evaluate ( "Let ( [ $$" & $theLabel & "=" & $aNumber & " ] ; \"\" )" ) ] 
+	# 
+	Set Variable [ $anID ; Value: JSONGetElement ( $$rc.responseAccountExtensions ; $recordNum & ".extension.id" ) ] 
+	Set Variable [ $theLabel ; Value: "extension"  & JSONGetElement ( $$rc.responseAccountExtensions ; $recordNum & ".extension.extensionNumber" ) & "_id" ] 
+	Set Variable [ $NameValuePair ; Value: Evaluate ( "Let ( [ $$" & $theLabel & "=" & $anID & " ] ; \"\" )" ) ] 
+	# 
+	Set Variable [ $LoopCounter ; Value: $LoopCounter + 1 ] 
+	Exit Loop If [ $LoopCounter > $ExtensionCount ] 
+End Loop

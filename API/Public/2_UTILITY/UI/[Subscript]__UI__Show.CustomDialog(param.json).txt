@@ -1,0 +1,104 @@
+# Name:
+[Subscript]__UI__Show.CustomDialog(param.json)
+
+History:
+Created by: Julio Toledo - Automation USA LLC
+Created: 2018-06-11
+Last Modified: 2023-1111 - Julio Toledo
+Completed code QA
+
+Purpose:
+Displays a fully parameterized native FileMaker custom dialog  
+
+Parameters:
+JSON object with following values: 
+{
+	"message", 
+	"title", 
+	"buttons": [ "default button", "button 2" , "button 3"], 
+	"commit flag", <-- (boolean)
+	"commit button", 
+	"beep flag" <-- (boolean)
+}
+- only the "message" object is required, all others are either optional or have defaults
+- Example use:
+	JSONSetElement ( 
+		"{}" ; 
+		[ "message" ; "Would you like to copy the previous line item?" ; JSONString ] ;
+		[ "title" ; "ADD NEW LINE ITEM" ; JSONString ] ;
+		[ "buttons.default button" ; "Yes" ; JSONString ] ;
+		[ "buttons.button 2" ; "No!" ; JSONString ] ;
+		[ "buttons.button 3" ; "Cancel" ; JSONString ];
+		[ "beep flag" ; True ; JSONBoolean ]
+	)
+
+Important Notes:
+-Requires FileMaker 16+ native JSON functions
+
+Allow User Abort [ Off ]
+# 
+# Escape if parameter is not supplied
+If [ IsEmpty ( Get ( ScriptParameter ) ) ] 
+	Exit Script [ Text Result: JSONSetElement ( "{}" ; [ "errorCode" ; 958 ; JSONNumber ] ; [ "error_description" ; ErrorDescription ( 958 ) ; JSONString ] ; [ "error" ; True ; "" ] ) ] 
+End If
+# 
+# escape if parameter json is malformed
+If [ Left ( JSONFormatElements (  Get ( ScriptParameter ) ) ; 1 ) = "?" ] 
+	Exit Script [ Text Result: JSONSetElement ( "{}" ; [ "errorCode" ; 721 ; JSONNumber ] ; [ "error_description" ; "Malformed JSON or " & ErrorDescription ( 721 ) ; JSONString ] ; [ "error" ; True ; "" ] ) ] 
+End If
+# 
+# store script parameter
+Set Variable [ $param.json ; Value: Get ( ScriptParameter ) ] 
+# 
+# parse JSON
+Set Variable [ $message ; Value: JSONGetElement ( $param.json ; "message" ) ] 
+Set Variable [ $title ; Value: JSONGetElement ( $param.json ; "title" ) ] 
+Set Variable [ $buttons ; Value: JSONGetElement ( $param.json ; "buttons" ) ] 
+If [ not IsEmpty ( $buttons ) and JSON.IsValid ( $buttons ) ] 
+	Set Variable [ $default_button ; Value: JSONGetElement ( $buttons ; "default button" ) ] 
+	Set Variable [ $button_2 ; Value: JSONGetElement ( $buttons ; "button 2" ) ] 
+	Set Variable [ $button_3 ; Value: JSONGetElement ( $buttons ; "button 3" ) ] 
+Else If [ IsEmpty ( $buttons ) or not JSON.IsValid ( $buttons ) ] 
+	Set Variable [ $default_button ; Value: "OK" ] 
+End If
+Set Variable [ $commit ; Value: JSONGetElement ( $buttons ; "commit flag" ) ] 
+Set Variable [ $commit_button ; Value: JSONGetElement ( $buttons ; "commit button" ) ] 
+Set Variable [ $beep ; Value: JSONGetElement ( $param.json; "beep flag" ) ] 
+# 
+# validate parameter(s)
+If [ IsEmpty ( $message ) ] 
+	Exit Script [ Text Result: JSONSetElement ( "{}" ; [ "errorCode" ; 958 ; JSONNumber ] ; [ "error_description" ; ErrorDescription ( 958 ) ; JSONString ] ; [ "error" ; True ; "" ] ) ] 
+Else If [ IsEmpty ( $title ) ] 
+	Set Variable [ $title ; Value: "Alert" ] 
+Else If [ IsEmpty ( $default_button ) ] 
+	Set Variable [ $default_button ; Value: "OK" ] 
+End If
+# 
+If [ $beep = True ] 
+	Beep
+End If
+# 
+If [ IsEmpty ( $button_2 ) and IsEmpty ( $button_3 ) ] 
+	Show Custom Dialog [ $title ; $message ] 
+Else If [ IsEmpty ( $button_3 ) and not IsEmpty ( $button_2 ) ] 
+	Show Custom Dialog [ $title ; $message ] 
+Else If [ IsEmpty ( $button_2 ) and not IsEmpty ( $button_3 ) ] 
+	Show Custom Dialog [ $title ; $message ] 
+Else
+	Show Custom Dialog [ $title ; $message ] 
+End If
+# 
+Set Variable [ $messageChoice ; Value: Get ( LastMessageChoice ) ] 
+# commit record/request when "commit flag" is true
+If [ $commit = True ] 
+	If [ $messageChoice = 1 and $commit_button = 1 ] 
+		Commit Records/Requests [ With dialog: Off ] 
+	Else If [ $messageChoice = 2 and $commit_button = 2 ] 
+		Commit Records/Requests [ With dialog: Off ] 
+	Else If [ $messageChoice = 3 and $commit_button = 3 ] 
+		Commit Records/Requests [ With dialog: Off ] 
+	End If
+End If
+# 
+Exit Script [ Text Result: $messageChoice ] 
+# 

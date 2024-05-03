@@ -1,0 +1,49 @@
+# Name:
+[Message-Log]-Get-User-Message-Log-()
+
+Created by: Julio Toledo - Automation USA LLC
+
+Purpose:
+Tests fetching current user's message log history
+
+Important Notes:
+-Requires FileMaker 16+ native JSON functions
+
+# params for testing
+// Set Variable [ $dateFrom ; Value: "2023-12-12T18:07:52.000Z" ] 
+// Set Variable [ $dateTo ; Value: "2023-12-15T23:59:59.000Z" ] 
+Set Variable [ $dateFrom ; Value: "2024-05-01T10:07:52.000Z" ] 
+Set Variable [ $dateTo ; Value: "2024-05-02T15:55:52.000Z" ] 
+# 
+// Set Variable [ $dateFrom ; Value: "2024-03-10T18:07:52.000Z" ] 
+// Perform Script [ Specified: From list ; “[Function]__Convert__Timestamp.toUTC( timestamp )” ; Parameter: "3/10/2024 4:44:44 PM" ]
+// Set Variable [ $dateFrom ; Value: Get ( ScriptResult ) ] 
+# 
+// Set Variable [ $dateTo ; Value: "2024-03-31T23:59:59.000Z" ] 
+Set Variable [ $pageNum ; Value: 1 //2 //3 //etc ] 
+// Set Variable [ $messageType ; Value: "SMS" //"Voicemail" //"Fax" //comment out this variable to request all types ] 
+// Set Variable [ $Direction ; Value: "Inbound" //comment out this variable to request both "Inbound" and "Outbound" ] 
+# 
+Set Variable [ 
+	$param.json ; 
+	Value: JSONSetElement ( 
+		"{}" ; 
+		[ "dateFrom" ; $dateFrom ; JSONString ] ;
+		[ "dateTo" ; $dateTo ; JSONString ];
+		[ "direction" ; $Direction ; JSONString ] ;
+		[ "messageType" ; $messageType ; JSONString ] ;
+		[ "perPage"; 1000  ; JSONNumber ] ;
+		[ "page" ; $pageNum ; JSONNumber ] 
+	)
+] 
+Perform Script [ Specified: From list ; “[GET]__RingCentral-MessageLog-(param.json)” ; Parameter: $param.json ]
+Set Variable [ $result ; Value: Get (ScriptResult) ] 
+# 
+# **********************************
+# optional - Call subscript to persist downloaded data as FileMaker records
+// If [ JSONGetElement ( $$rc.responseMessageLog; ".data.records" ) ≠ "[]" ] 
+	// Perform Script [ Specified: From list ; “[subscript]-[Call-Log]-Persist-UserLog-in-FM-( )” ; Parameter:    ]
+// End If
+# **********************************
+# 
+# 

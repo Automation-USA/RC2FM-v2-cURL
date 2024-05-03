@@ -1,0 +1,84 @@
+# Name:
+[POST]__RingCentral-Get-Token-[New-Session]-()
+
+History:
+Created by: Julio Toledo - Automation USA LLC
+Created: 2020-01-11
+Last Modified: 2024-0222 - Julio Toledo
+Modified cURL request to authenticate via JTW auth flow ($$jwt global var)
+
+Purpose:
+Authenticates user using JWT auth flow and obtains an API access token
+
+Parameters:
+None. Only requries JTW Token global var ("$$jwt).
+
+Reference:
+-https://developers.ringcentral.com/api-reference/Get-Token
+-https://developers.ringcentral.com/api-reference/Authorization
+-https://developers.ringcentral.com/guide/getting-started/create-credential
+-https://developers.ringcentral.com/guide/authentication/jwt-flow
+-https://developers.ringcentral.com/guide/authentication/auth-code-flow
+
+Important Notes:
+-Requires FileMaker 16+ native JSON functions
+-Requires global variable "$$jwt" 
+ (obtained by visiting https://developers.ringcentral.com/console/my-credentials/create?client_id=<YOUR RINGCENTRAL API-APP ID [AKA CLIENT ID]>)
+
+Set Variable [ $scriptName ; Value: "Script: " & Quote ( Get (ScriptName) ) ] 
+# 
+# Escape if JWT is not supplied
+If [ IsEmpty ( $$jwt ) ] 
+	Perform Script [ Specified: From list ; “[Function]__Get__FM.ErrorDescription( errorCode )” ; Parameter: 958 ]
+	Set Variable [ $ErrorDescription ; Value: Get ( ScriptResult ) ] 
+	Exit Script [ Text Result: JSONSetElement ( "{}" ; [ "errorCode" ; 958 ; JSONNumber ] ; [ "error_description" ; "Missing $$JWT (jwt token) global variable. " & $ErrorDescription & ¶ & ¶  & $scriptName ; JSONString ] ; [ "error" ; True ; "" ] ) ] 
+End If
+# 
+# Re-intialize environment variables (just in case)
+Perform Script [ Specified: From list ; “[Function]__Init__RingCentral.API.Environment( )” ; Parameter:    ]
+Set Variable [ $AuthorizationHeader ; Value: Get ( ScriptResult ) ] 
+# 
+# concatenate endpoint URL
+Set Variable [ $url ; Value: $$rc.baseURL & $$rc.endpointToken ] 
+# 
+# Concatenate entire cURL command [JWT grant type]
+Set Variable [ $cURL ; Value: //New: JWT auth flow
+	Let ( [ cURL = 
+	
+	"-X POST 
+	--header \"Content-Type: application/x-www-form-urlencoded\"
+	--header \"Accept: application/json\"
+	--header \"Authorization: Basic " & $AuthorizationHeader & "\"" & "
+	--header \"User-Agent: " & $$rc.userAgent & "\"
+	 
+	--dump-header \"$$rc.responseTokenOAuthHeader\"
+	
+	-d \"grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer&assertion=" & $$jwt & "\" "
+	
+	] ; 
+	
+	Substitute ( cURL ; [Char ( "10" ); ""];[Char ( "13" ); ""]; [Char ( "¶" ); ""]) 
+	
+	)
+] 
+# 
+# reset all previous session global vars
+Perform Script [ Specified: From list ; “[Function]__RC2FM-GlobalVars.Clear( )” ; Parameter:    ]
+# 
+# [HTTP-POST]
+Insert from URL [ With dialog: Off ; Target: $$rc.responseTokenOAuth ; $url ; Verify SSL Certificates ; cURL options: $cURL ] 
+# 
+# Validate API response
+If [ PatternCount ( $$rc.responseTokenOAuth ; "error" ) ] 
+	# Exit if errored
+	Exit Script [ Text Result: $$rc.responseTokenOAuth ] 
+End If
+# 
+# if authentication was successful, store expiration timestamps for new access token and refresh token
+If [ PatternCount ( $$rc.responseTokenOAuth ; "access_token" ) ] 
+	Set Variable [ $$rc.accessTokenExpiryTime ; Value: Get ( CurrentHostTimestamp ) + $$rc.tokenTTL ] 
+	Set Variable [ $$rc.refreshTokenExpiryTime ; Value: Get ( CurrentHostTimestamp ) + JSONGetElement ( $$rc.responseTokenOAuth ; "refresh_token_expires_in" ) ] 
+	# 
+	# clear any token revocation http headers from prior session 
+	Perform Script [ Specified: From list ; “[Function]__RC2FM-RevokeHeaders.Clear( )” ; Parameter:    ]
+End If

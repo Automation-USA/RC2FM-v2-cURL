@@ -1,0 +1,27 @@
+# [Function]__JSONparse__RC.UserPhoneNumbers($$rc.responseUserPhoneNums)
+
+Allow User Abort [ Off ]
+Set Variable [ $NumberCount ; Value: JSONGetElement ( $$rc.responseUserPhoneNums ; ".paging.totalElements" ) ] 
+Set Variable [ $startingValue ; Value: JSONGetElement ( $$rc.responseUserPhoneNums ; ".paging.pageStart" ) ] 
+# 
+Set Variable [ $LoopCounter ; Value: $startingValue ] 
+Loop
+	Set Variable [ $recordNum ; Value: ".records[" & $LoopCounter & "]" ] 
+	# 
+	Set Variable [ $aNumber ; Value: JSONGetElement ( $$rc.responseUserPhoneNums ; $recordNum & ".phoneNumber" ) ] 
+	If [ not IsEmpty ( JSONGetElement ( $$rc.responseUserPhoneNums ; $recordNum & ".vanityPattern" ) ) ] 
+		Set Variable [ $theLabel ; Value: "vanityNumber_" & $LoopCounter ] 
+	Else If [ JSONGetElement ( $$rc.responseUserPhoneNums ; $recordNum & ".usageType" ) = "DirectNumber" ] 
+		If [ IsEmpty ( $$DirectNumber ) ] 
+			Set Variable [ $theLabel ; Value: "DirectNumber" ] 
+		Else
+			Set Variable [ $theLabel ; Value: "DirectNumber_" & $LoopCounter ] 
+		End If
+	Else
+		Set Variable [ $theLabel ; Value: JSONGetElement ( $$rc.responseUserPhoneNums ; $recordNum & ".usageType" ) ] 
+	End If
+	Set Variable [ $NameValuePair ; Value: Evaluate ( "Let ( [ $$" & $theLabel & " = " & $aNumber & " ] ; \"\" )" ) ] 
+	# 
+	Set Variable [ $LoopCounter ; Value: $LoopCounter + 1 ] 
+	Exit Loop If [ $LoopCounter > $NumberCount ] 
+End Loop

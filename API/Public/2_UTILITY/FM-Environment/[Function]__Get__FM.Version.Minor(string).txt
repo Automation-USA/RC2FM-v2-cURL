@@ -1,0 +1,153 @@
+# [Function]__Get__FM.Version.Minor(string)
+
+Allow User Abort [ Off ]
+# 
+# Name:
+[Function]__Get__FM.Version.Minor(string)
+
+History:
+Created by: Julio Toledo - Automation USA LLC
+Created: 2020-01-11
+Last Modified: 2023-1111 - Julio Toledo
+Completed code QA
+
+Purpose:
+Implements Custom Function: "GetMinorVersion" as a script.
+
+/*
+ * ===============
+ * GetMinorVersion
+ * 
+ * PARAMETERS:
+ *		$string, defaults to "Get ( ApplicationVersion )" function.
+ *
+ *
+ * RETURNS:
+ *		Returns Patch and Minor application version numbers (as string) by filtering out all non-numeric characters from version string and truncating version integer from version float.
+ *		Normalizes various non-normal methods of semantic versioning ( https://semver.org ), including use of non-standard separators such as underscore "_", hyphen "-", and comma ","
+ *
+ *		Examples: 
+ *
+ *		GetMinorVersion ( "" ) returns ".0.3" when Get ( ApplicationVersion ) = "ProAdvanced 17.0.3"
+ *
+ *		GetMinorVersion ( Get ( HostApplicationVersion )  ) returns ".0.4" when Get ( HostApplicationVersion ) = "Server 16.0.4"
+ *
+ *		GetMinorVersion ( $$MODULE.VERSION ) returns ".0.1" when $$MODULE.VERSION = "Version 1.0.1"
+ *
+ *		GetMinorVersion ( Get ( WindowName ) ) returns ".0.3" when window name = "My_App_1_0_3"
+ *
+ *		GetMinorVersion ( GetSystemPlatformVersion ) returns ".14.2 when GetSystemPlatformVersion = "macOS 10.14.2"
+ *
+ *		GetMinorVersion ( Get ( FileName ) ) returns ".0.3.5” when  Get ( FileName )  = "My_App_0-0-3-5"
+ *
+ *		GetMinorVersion ( Get ( FileName ) ) returns ".1.3.5" when  Get ( FileName )  = "My-App-2,1,3,5"
+ *
+ *		Returns "N/A" as default
+ *
+ * DEPENDENCIES:
+ * 		None
+ *
+ *
+ * KNOWN ISSUES:
+ * 		May truncate separators between Patch and Minor versions ( i.e. ".135" ) when parameter string contains multiple concatenated non-mormal symbols ( i.e. "0_1_3_,5 ")
+ *
+ * NOTES:
+ * 		None
+ *
+ * RELEASE:
+ * 		2019-01-06 - Initial release by Julio Toledo, Automation USA LLC ( www.automationusa.net )
+ *
+ * ===============
+ * 
+ */
+
+Set Variable [ $string ; Value: Get ( ScriptParameter ) ] 
+Exit Script [ Text Result: 
+	/*
+	 * ===============
+	 * GetMinorVersion
+	 * 
+	 * PARAMETERS:
+	 *		string, defaults to "Get ( ApplicationVersion )" function.
+	 *
+	 *
+	 * RETURNS:
+	 *		Returns Patch and Minor application version numbers (as string) by filtering out all non-numeric characters from version string and truncating version integer from version float.
+	 *		Normalizes various non-normal methods of semantic versioning ( https://semver.org ), including use of non-standard separators such as underscore "_", hyphen "-", and comma ","
+	 *
+	 *		Examples: 
+	 *
+	 *		GetMinorVersion ( "" ) returns ".0.3" when Get ( ApplicationVersion ) = "ProAdvanced 17.0.3"
+	 *
+	 *		GetMinorVersion ( Get ( HostApplicationVersion )  ) returns ".0.4" when Get ( HostApplicationVersion ) = "Server 16.0.4"
+	 *
+	 *		GetMinorVersion ( $$MODULE.VERSION ) returns ".0.1" when $$MODULE.VERSION = "Version 1.0.1"
+	 *
+	 *		GetMinorVersion ( Get ( WindowName ) ) returns ".0.3" when window name = "My_App_1_0_3"
+	 *
+	 *		GetMinorVersion ( GetSystemPlatformVersion ) returns ".14.2 when GetSystemPlatformVersion = "macOS 10.14.2"
+	 *
+	 *		GetMinorVersion ( Get ( FileName ) ) returns ".0.3.5” when  Get ( FileName )  = "My_App_0-0-3-5"
+	 *
+	 *		GetMinorVersion ( Get ( FileName ) ) returns ".1.3.5" when  Get ( FileName )  = "My-App-2,1,3,5"
+	 *
+	 *		Returns "N/A" as default
+	 *
+	 * DEPENDENCIES:
+	 * 		None
+	 *
+	 *
+	 * KNOWN ISSUES:
+	 * 		May truncate separators between Patch and Minor versions ( i.e. ".135" ) when parameter string contains multiple concatenated non-mormal symbols ( i.e. "0_1_3_,5 ")
+	 *
+	 * NOTES:
+	 * 		None
+	 *
+	 * RELEASE:
+	 * 		2019-01-06 - Initial release by Julio Toledo, Automation USA LLC ( www.automationusa.net )
+	 *
+	 * ===============
+	 * 
+	 */
+	
+	
+	Let ( 
+	
+		[
+	
+		string = If ( IsEmpty ( $string ) ; Get ( ApplicationVersion ) ; $string ) ;
+	
+		myfilter = "-.0123456789_," ;
+	
+		digits = Filter ( string ; myfilter ) ;
+	
+		version = Substitute ( digits ; [ "__" ; "_" ] ; [ "_" ; "." ] ; [ "-" ; "."] ; [ "—" ; "-"]  ; [ ",," ; "," ] ; [ "," ; "." ] ; [ ".." ; "" ] ) ;
+	
+		version = If ( 
+					not GetAsNumber ( Left ( version ; 1 ) ) ;
+	
+					Middle ( version ; 2 ; Length ( version ) ) ;
+	
+					version
+				) ;
+	
+		minor = Replace ( version ; 1 ; Length ( Int ( version ) ) ; "" )
+	
+		] ; 
+	
+		//calculation 
+		Case ( 
+	
+			minor =  "0" ; ".0" ; 
+	
+			minor = "." ; ".0" ;
+	
+			IsEmpty ( minor ) ; "N/A" ;
+	
+			//defaultResult
+			minor 
+	
+		)
+	
+	)
+] 

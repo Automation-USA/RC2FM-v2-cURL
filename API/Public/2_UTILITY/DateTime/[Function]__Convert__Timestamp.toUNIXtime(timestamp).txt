@@ -1,0 +1,82 @@
+# Name:
+[Function]__Convert__Timestamp.toUNIXtime(timestamp)
+
+History:
+Created by: Julio Toledo - Automation USA LLC
+Created: 2020-01-11
+Last Modified: 2023-1111 - Julio Toledo
+Completed code QA
+
+Purpose:
+Implements Custom Function: "FM2UnixTimeStamp ( _date ; _time )" as a script.
+------------------
+La Source multimédia
+12/2013
+
+FM2UnixTimeStamp ( _date ; _time )
+
+Returns a Unix TimeStamp: yyyy-mm-dd{ hh:mm:ss}
+
+$_date: FileMaker date
+$_time: FileMaker time
+------------------
+
+Important Notes:
+-Requires FileMaker 16+ native JSON functions
+-Requires "ErrorDescription" custom function
+
+# Test for script parameter
+If [ IsEmpty ( Get ( ScriptParameter ) ) ] 
+	Exit Script [ Text Result: JSONSetElement ( "{}" ; [ "errorCode" ; 958 ; JSONNumber ] ; [ "error_description" ; ErrorDescription ( 958 ) ; JSONString ] ; [ "error" ; True ; "" ] ) ] 
+End If
+Set Variable [ $timestamp ; Value: Get ( ScriptParameter ) ] 
+# 
+# Parse timestamp parameter into date and time variables
+Set Variable [ $_date ; Value: Date ( Month ( $timestamp ) ; Day ( $timestamp ) ; Year ( $timestamp ) ) ] 
+Set Variable [ $_time ; Value: Time ( Hour ( $timestamp ) ; Minute ( $timestamp ) ; Seconds ( $timestamp ) ) ] 
+# 
+# remove special characters from file name
+Set Variable [ 
+	$unix_timestamp ; 
+	Value: Let([	
+	//	_date= Date ( 8 ; 4 ; 2013 );
+	//	_time= time ( 8 ; 4 ; 3 );
+		
+		year = Year ( $_date );
+		month = Right ( "0" & Month ( $_date ) ; 2 );
+		day = Right ( "0" & Day ( $_date ) ; 2 );
+		
+		hour = Right ( "0" & Hour ( $_time ) ; 2 );
+		min = Right ( "0" & Minute ( $_time ) ; 2 );
+		sec = Right ( "0" & Seconds ( $_time ) ; 2 )
+	
+	];
+	
+	
+	If ( not IsEmpty ($_date) ;
+		year & "-" & month & "-" & day &
+		If ( not IsEmpty ($_time) ;
+			"T" & hour & ":" & min & ":" & If ( not IsEmpty ( sec ) ; sec ; "00" ) & ".000Z" 
+			//Time calc modifications by Automation USA (www.automationusa.com/custom-app-development)
+		)
+	)
+		
+	)
+	
+	/* 
+	--------------------------
+	La Source multimédia
+	12/2013
+	
+		FM2UnixTimeStamp ( _date ; _time )
+	
+	Returns a Unix TimeStamp: yyyy-mm-dd{ hh:mm:ss}
+	
+	$_date: FileMaker date
+	$_time: FileMaker time
+	
+	--------------------------
+	*/
+] 
+# 
+Exit Script [ Text Result: $unix_timestamp ] 

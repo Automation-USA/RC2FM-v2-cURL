@@ -1,0 +1,49 @@
+# [Function]__Validate__MIMEtype.MMS(param)
+
+# Validate MMS attachment files against RingCentral® supported MIME Types
+If [ IsEmpty ( Get ( ScriptParameter ) ) ] 
+	Exit Script [ Text Result: 417 ] 
+End If
+# 
+Set Variable [ $fileExtension ; Value: Get ( ScriptParameter ) ] 
+Exit Script [ Text Result: 
+	Let ( [ extension = Substitute ( $fileExtension ; "." ; "" ) ] ; 
+	
+		//calculation	
+		Case (
+			
+			IsEmpty ( extension ) ; "400" ;
+	
+			extension = "vcf" ; "text/vcard" ;
+	
+			extension = "gif" ; "image/gif" ;
+	
+			extension = "png" ; "image/png" ;
+	
+			extension = "bmp" ; "image/bmp" ;
+	
+			extension = "jpeg" or extension = "jpg" ; "image/jpeg" ;
+	
+			extension = "tiff" or extension = "tif" ; "image/tiff" ;
+	
+			extension = "mp3" ; "audio/mpeg" ;
+	
+			extension = "3gp" ; "video/3gpp" ;
+	
+			extension = "avi" ; "video/msvideo" ;
+	
+			extension = "mp4" or extension = "m4v" ; "video/mp4" ;
+	
+			extension = "m1v" or extension = "m2v" or extension = "mpg" or extension = "mpeg" ; "video/mpeg" ;
+	
+			extension = "zip" ; "application/zip" ;
+	
+			extension = "gz"  or extension = "gzip" ; "application/gzip" ;
+	
+			//default result
+			"417" 
+	
+		) //end Case
+	
+	) //end Let
+] 

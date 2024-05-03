@@ -1,0 +1,139 @@
+# Name:
+[GET]__RingCentral-MessageAttachment-(param.json)
+
+History:
+Created by: Julio Toledo - Automation USA LLC
+Created: 2020-01-11
+Last Modified: 2024-0331 - Julio Toledo
+Completed code QA
+
+Purpose:
+Returns media content of a message attachment [as specified the by requested message ID and attachment ID]. 
+The content is typicaly an audio file (audio/mpeg or audio/wav) for voicemails, TIFF or PDF for faxes and image/audio/video for MMS.)
+
+Parameter:
+JSON object with the following value: 
+{
+	"messageID",
+	"attachmentID",
+	"destination_path",
+	"messageID_path",
+	"attachmentID_path",
+	"attachment_Type",
+	"mime_Type"
+}
+- Parameter Definition: 
+	-"messageID" (Internal identifier of a message [as returned from a Message Log report].)
+	-"attachmentID" (Internal identifier of a message attachment [as returned from a Message Log report].)
+	-"destination_path" (internal database record path to a FileMaker container field where the binary will be stored.)
+	-"messageID_path" (internal database record path to a FileMaker text field where the key of the parent message log record will be stored.)
+	-"attachmentID_path" (internal database record path to a FileMaker text field where the primary key of the message attachment record will be stored.)
+	-"attachment_Type" (attachement file type [e.g. "AudioRecording"] of the attachment being requested [as returned by the "attachments["type"]" object in the Message Log record].)
+	-"mime_Type" (contet-type [e.g. "audio/x-wav"] of the attachement being requested [as returned from the "attachements["contentType"]" object in the Message Log record].)
+
+- Example use:
+	JSONSetElement ( 
+		"{}" ; 
+		[ "messageID" ; 877533160012 ; JSONNumber ] ;
+		[ "attachmentID" ; 877533160012 ; JSONNumber ] ;
+		[ "destination_path" ; GetFieldName ( RC2FMv2_ATTACHMENTS::attachment ) ; JSONString ] ;
+		[ "messageID_path" ; GetFieldName ( RC2FMv2_ATTACHMENTS::id ) ; JSONString ] ;
+		[ "attachmentID_path" ; GetFieldName ( RC2FMv2_ATTACHMENTS::_id ) ; JSONString ] ;
+		[ "attachment_Type" ; "AudioRecording" ; JSONString ] ;
+		[ "mime_Type" ; "audio/x-wav" ; JSONString ]
+	)
+
+Global Variables:
+-Requires valid "$$rc.responseTokenOAuth" JSON object (from API session authentication)
+-Requires "$$rc.accessTokenExpiryTime" global variable 
+
+Reference:
+-https://developers.ringcentral.com/api-reference/Message-Store/readMessageContent
+-https://developers.ringcentral.com/guide/messaging/message-store/working-with-message-store
+
+Important Notes:
+-Requires FileMaker 16+ native JSON functions
+-Requires access to the FM table [as specified in the "destination_path" parameter]. 
+ Unlike other API requests, this script inserts response data directly into FM field(s) rather than into a global variable.
+ Therefore, the user session [or PSoS session] under which this script is executed will require access to that internal database path.
+
+Set Variable [ $scriptName ; Value: "Script: " & Quote ( Get (ScriptName) ) ] 
+# 
+# Escape if parameter is not supplied
+If [ IsEmpty ( Get (ScriptParameter ) ) ] 
+	Perform Script [ Specified: From list ; “[Function]__Get__FM.ErrorDescription( errorCode )” ; Parameter: 958 ]
+	Set Variable [ $ErrorDescription ; Value: Get ( ScriptResult ) ] 
+	Exit Script [ Text Result: JSONSetElement ( "{}" ; [ "errorCode" ; 958 ; JSONNumber ] ; [ "error_description" ; $ErrorDescription & ¶ & ¶  & $scriptName ; JSONString ] ; [ "error" ; True ; "" ] ) ] 
+End If
+# 
+# validate parameter syntax
+If [ Left ( JSONFormatElements (  Get ( ScriptParameter ) ) ; 1 ) = "?" ] 
+	Perform Script [ Specified: From list ; “[Function]__Get__FM.ErrorDescription( errorCode )” ; Parameter: 1710 ]
+	Set Variable [ $ErrorDescription ; Value: Get ( ScriptResult ) ] 
+	Exit Script [ Text Result: JSONSetElement ( "{}" ; [ "errorCode" ; 1710 ; JSONNumber ] ; [ "error_description" ; "Malformed JSON or " & $ErrorDescription & ¶ & ¶ & $scriptName ; JSONString ] ; [ "error" ; True ; "" ] ) ] 
+End If
+# 
+# store script parameter
+Set Variable [ $param.json ; Value: Get ( ScriptParameter ) ] 
+# 
+# parse JSON
+Set Variable [ $messageID ; Value: JSONGetElement ( $param.json ; "messageID" ) ] 
+Set Variable [ $attachmentID ; Value: JSONGetElement ( $param.json ; "attachmentID" ) ] 
+Set Variable [ $destination_path ; Value: JSONGetElement ( $param.json ; "destination_path" ) ] 
+Set Variable [ $attachmentID_path ; Value: JSONGetElement ( $param.json ; "attachmentID_path" ) ] 
+Set Variable [ $messageID_path ; Value: JSONGetElement ( $param.json ; "messageID_path" ) ] 
+# 
+# Validate required parameters
+# validate $attachmentID
+If [ IsEmpty ( $attachmentID ) or IsEmpty ( $messageID ) ] 
+	Perform Script [ Specified: From list ; “[Function]__Get__FM.ErrorDescription( errorCode )” ; Parameter: 1707 ]
+	Set Variable [ $ErrorDescription ; Value: Get ( ScriptResult ) ] 
+	Exit Script [ Text Result: JSONSetElement ( "{}" ; [ "errorCode" ; 1707 ; JSONNumber ] ; [ "error_description" ; $ErrorDescription & ¶ & ¶ & $scriptName ; JSONString ] ; [ "error" ; True ; "" ] ) ] 
+End If
+# validate $destination_path
+If [ not IsValid ( $destination_path ) ] 
+	Perform Script [ Specified: From list ; “[Function]__Get__FM.ErrorDescription( errorCode )” ; Parameter: 1209 ]
+	Set Variable [ $ErrorDescription ; Value: Get ( ScriptResult ) ] 
+	Exit Script [ Text Result: JSONSetElement ( "{}" ; [ "errorCode" ; 1209 ; JSONNumber ] ; [ "error_description" ; $ErrorDescription & ¶ & ¶ & $scriptName ; JSONString ] ; [ "error" ; True ; "" ] ) ] 
+End If
+# 
+# validate API token
+Set Variable [ $tokenTimeLeft ; Value: GetAsNumber ( Get ( CurrentHostTimestamp ) - GetAsTimestamp ( $$rc.accessTokenExpiryTime ) ) ] 
+If [ $tokenTimeLeft > -60 ] 
+	Perform Script [ Specified: From list ; “[POST]__RingCentral-Refresh-Token-[Prolong-Session]-( )” ; Parameter:    ]
+End If
+Set Variable [ $token ; Value: JSONGetElement ( $$rc.responseTokenOAuth ; ".access_token" ) ] 
+# 
+# concatenate endpoint URL
+Set Variable [ $url ; Value: $$rc.mediaURL & $$rc.endpointMessageLog & "/" & $messageID & "/content/" & $attachmentID &
+"?contentDisposition=Attachment&contentDispositionFilename=attachment" & $attachmentID 
+
+//note: binary media store (prod) uri is 'https://media.ringcentral.com/'
+] 
+# 
+# Concatenate entire cURL command
+Set Variable [ $cURL ; Value: " -X GET --header \"Accept: " & $mimeType & "\" --header \"Authorization: Bearer " & $token & "\" --header \"User-Agent: " & $$rc.userAgent & "\" --dump-header \"$$rc.responseAttachmentHeader\" --FM-return-container-variable" ] 
+# 
+# clear message-attachment global vars
+Set Variable [ $$rc.responseAttachmentHeader ; Value: "" ] 
+Set Variable [ $rc.attachmentBinary ; Value: "" ] 
+# 
+# [HTTP-GET]
+Set Error Capture [ On ]
+Insert from URL [ Select ; With dialog: Off ; Target: $rc.attachmentBinary ; $url ; Verify SSL Certificates ; cURL options: $cURL ] 
+Set Variable [ $curlError ; Value: Get(LastErrorDetail)  & ¶ & Get ( LastError ) ] 
+# 
+# Insert binary file into an FM container field
+If [ GetValue ( $curlError ; 2 ) = "0" ] 
+	Set Field By Name [ $destination_path ; $rc.attachmentBinary ] 
+	# 
+	# populate additional primary and foreign key fields (optional)
+	If [ not IsEmpty ( $attachmentID_path ) ] 
+		Set Field By Name [ $attachmentID_path ; $attachmentID ] 
+	End If
+	If [ not IsEmpty ( $messageID_path ) ] 
+		Set Field By Name [ $messageID_path ; $messageID ] 
+	End If
+	# 
+End If
+# 

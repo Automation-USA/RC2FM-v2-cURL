@@ -1,0 +1,46 @@
+# Name:
+[Call-Log]-Get-User-Call-Log-()
+
+Created by: Julio Toledo - Automation USA LLC
+
+Purpose:
+Tests fetching current user's call log history
+
+Important Notes:
+-Requires FileMaker 16+ native JSON functions
+
+# params for testing
+Set Variable [ $dateFrom ; Value: "2024-03-14T18:07:52.534Z" ] 
+// Perform Script [ Specified: From list ; “[Function]__Convert__Timestamp.toUTC( timestamp )” ; Parameter: "3/10/2024 4:44:44 PM" ]
+// Set Variable [ $dateFrom ; Value: Get ( ScriptResult ) ] 
+# 
+Set Variable [ $dateTo ; Value: "2024-03-15T23:59:59.000Z" ] 
+// Perform Script [ Specified: From list ; “[Function]__Convert__Timestamp.toUTC( timestamp )” ; Parameter: "3/31/2024 11:59:59 PM" ]
+// Set Variable [ $dateTo ; Value: Get ( ScriptResult ) ] 
+# 
+Set Variable [ $view ; Value: "Simple" //"Detailed" ] 
+Set Variable [ $pageNum ; Value: 1 //2 //3 ] 
+# 
+Set Variable [ 
+	$param.json ; 
+	Value: JSONSetElement ( 	 	
+		"{}" ; 	
+		[ "dateFrom" ; $dateFrom ; JSONString ] ; 	
+		[ "dateTo" ; $dateTo ; JSONString ]; 	
+		[ "view" ; $view ; JSONString ] ; 	
+		[ "recordingType" ; "All" ; JSONString ] ; 	
+		[ "perPage"; 1000  ; JSONNumber ] ; 	
+		[ "page" ; $pageNum ; JSONNumber ] 
+	)
+]
+Perform Script [ Specified: From list ; “[GET]_RingCentral-Extension-CallLog-(param.json)” ; Parameter: $param.json ]
+Set Variable [ $result ; Value: Get (ScriptResult) ] 
+# 
+# **********************************
+# optional - Call subscript to persist downloaded data as FileMaker records
+// If [ JSONGetElement ( $$rc.responseCallLog ; ".data.records" ) ≠ "[]" ] 
+	// Perform Script [ Specified: From list ; “[subscript]-[Call-Log]-Persist-UserLog-in-FM-( )” ; Parameter:    ]
+// End If
+# **********************************
+# 
+# 

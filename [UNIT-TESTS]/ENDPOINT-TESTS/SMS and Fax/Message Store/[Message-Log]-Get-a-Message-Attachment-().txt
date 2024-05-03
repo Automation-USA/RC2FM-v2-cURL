@@ -1,0 +1,53 @@
+# Name:
+[Message-Log]-Get-a-Message-Attachment-()
+
+Created by: Julio Toledo - Automation USA LLC
+
+Purpose:
+Tests fetching current user's call log history
+
+Important Notes:
+-Requires FileMaker 16+ native JSON functions
+
+# params for testing
+# Note: Extract your own test values by parsing Message Log results
+Set Variable [ $messageID ; Value: "2256687109012" ] 
+Set Variable [ $attachmentID ; Value: "615024058012" ] 
+Set Variable [ $attachmentType ; Value: "MMSAttachment" ] 
+Set Variable [ $mimeType ; Value: "image/jpeg" ] 
+Set Variable [ $destination_path ; Value: GetFieldName ( RC2FM_GLOBALS::tempContainer7 ) ] 
+// Set Variable [ $destination_path ; Value: GetFieldName ( RC2FMv2_ATTACHMENTS::attachment ) ] 
+# 
+// Set Variable [ $messageID_path ; Value: GetFieldName ( RC2FMv2_ATTACHMENTS::id ) ] 
+// Set Variable [ $attachmentID_path ; Value: GetFieldName ( RC2FMv2_ATTACHMENTS::_id ) ] 
+# #
+# 
+# Other possible message attachment content types:
+// Set Variable [ $messageID ; Value: "873241311013" ] 
+// Set Variable [ $attachmentID ; Value: "218597268013" ] 
+// Set Variable [ $attachmentType ; Value: "VoiceMail" ] 
+// Set Variable [ $mimeType ; Value: "audio/x-wav" ] 
+# 
+// Set Variable [ $messageID ; Value: "873241311014" ] 
+// Set Variable [ $attachmentID ; Value: "218597268014" ] 
+// Set Variable [ $attachmentType ; Value: "Fax" ] 
+// Set Variable [ $mimeType ; Value: "application/pdf" ] 
+#  
+# alternate json parameter options (with/without field paths for storing the attachment ID and message ID primary/foreign keys)
+// Set Variable [ $param.json ; Value: 	JSONSetElement ( "{}" ; [ "messageID" ; $messageID ; JSONNumber ] ; [ "attachmentID" ; $attachmentID ; JSONNumber ] ; [ "destination_path" ; $destination_path ; JSONString ] ; [ "messageID_path" ; $messageID_path ; JSONString ] ; [ "attachmentID_path" ; $attachmentID_path ; JSONString ] ; [ "attachment_Type" ; $attachmentType ; JSONString ] ; [ "mime_Type" ; $mimeType ; JSONString ] ) ] 
+// Set Variable [ $param.json ; Value: 		JSONSetElement ( "{}" ; [ "messageID" ; $messageID ; JSONNumber ] ; [ "attachmentID" ; $attachmentID ; JSONNumber ] ; [ "destination_path" ; $destination_path ; JSONString ] ; [ "attachment_Type" ; $attachmentType ; JSONString ] ; [ "mime_Type" ; $mimeType ; JSONString ] )] 
+Set Variable [ 
+	$param.json ; 
+	Value: 	JSONSetElement ( 
+		"{}" ; 
+		[ "messageID" ; $messageID ; JSONNumber ] ;
+		[ "attachmentID" ; $attachmentID ; JSONNumber ] ;
+		[ "destination_path" ; $destination_path ; JSONString ] ;
+		[ "attachment_Type" ; $attachmentType ; JSONString ] ;
+		[ "mime_Type" ; $mimeType ; JSONString ]
+	)
+] 
+# 
+Perform Script [ Specified: From list ; “[GET]__RingCentral-MessageAttachment-(param.json)” ; Parameter: $param.json ]
+Set Variable [ $result ; Value: Get (ScriptResult) ] 
+# 

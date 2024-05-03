@@ -1,0 +1,135 @@
+# Name:
+[Function]__Get_System.Platform.Version()
+
+History:
+Created by: Julio Toledo - Automation USA LLC
+Created: 2023-01-11
+Last Modified: 2023-1111 - Julio Toledo
+Completed code QA
+
+Purpose:
+Implements Custom Function: "GetSystemPlatformVersion" as a script.
+
+Important Notes:
+None
+
+------------------
+/*
+ * =====================================================
+ * GetSystemPlatformVersion
+ * 
+ * PARAMETERS:
+ *		None
+ *
+ *
+ * RETURNS:
+ *		Returns host OS name and version number or OS abbreviation and browser version in human readable format. *
+ *		Example: 
+ *
+ *		Returns "macOS 10.14.2" when executed from a Mac running FileMaker Pro on macOS Mojave
+ *		Returns "macOS 10.14.2" when executed from a Mac running FileMaker Pro on macOS Mojave
+ *		Returns "Windows 7" when executed from a PC running FileMaker Pro on Windows 7
+ *		Returns "Windows 10" when executed from a PC running Windows 10
+ *		Returns "Windows 11.0" when executed from a PC running Windows 11
+ *		Returns "WebDirect iPad Safari 11.0" when executed from a PC running WebDirect on iOS Safari 11.x
+ *		Returns "WebDirect Win Chrome 71" when executed from a PC running WebDirect on Google Chrome 71
+ *		Returns "N/A" as default
+ *
+ * DEPENDENCIES:
+ * 		None
+ *
+ *
+ * KNOWN ISSUES:
+ * 		None
+ *
+ * NOTES:
+ * 		None
+ *
+ * RELEASE:
+ * 		2018-12-30 - Initial release by Julio Toledo, Automation USA LLC ( www.automationusa.net )
+ *
+ * =====================================================
+ * 
+ */
+------------------
+
+Set Variable [ $systemVersion ; Value: 
+	/*
+	 * =====================================================
+	 * GetSystemPlatformVersion
+	 * 
+	 * PARAMETERS:
+	 *		None
+	 *
+	 *
+	 * RETURNS:
+	 *		Returns host OS name and version number or OS abbreviation and browser version in human readable format.
+	 *
+	 *		Example: 
+	 *
+	 *		Returns "macOS 10.14.2" when executed from a Mac running FileMaker Pro on macOS Mojave
+	 *		Returns "macOS 10.14.2" when executed from a Mac running FileMaker Pro on macOS Mojave
+	 *		Returns "Windows 7" when executed from a PC running FileMaker Pro on Windows 7
+	 *		Returns "Windows 10" when executed from a PC running Windows 10
+	 *		Returns "WebDirect iPad Safari 11.0" when executed from a PC running WebDirect on iOS Safari 11.x
+	 *		Returns "WebDirect Win Chrome 71" when executed from a PC running WebDirect on Google Chrome 71
+	 *		Returns "N/A" as default
+	 *
+	 * DEPENDENCIES:
+	 * 		None
+	 *
+	 *
+	 * KNOWN ISSUES:
+	 * 		None
+	 *
+	 * NOTES:
+	 * 		None
+	 *
+	 * RELEASE:
+	 * 		2018-12-30 - Initial release by Julio Toledo, Automation USA LLC ( www.automationusa.net )
+	 *
+	 * =====================================================
+	 * 
+	 */
+	
+	Let ( 
+	
+	[
+		system = Get ( SystemPlatform ) ;
+	
+		version = Get (SystemVersion ) ;
+	
+		platform = Case ( 
+	
+			system = 1 ; "macOS" ; 
+	
+			system = -2 ; "Windows" ; 
+	
+			system = 3 ; "iOS" ; 
+	
+			system = 4 ; "WebDirect" ; 
+	
+			//defaultResult 
+			"N/A"
+	
+			)  ;
+	
+		version = Case ( 
+	
+			version = 6.1 ; "7" ; 
+	
+			version = 6.3 ; "8.1" ; 
+	
+			version = "10.0" ; "10" ; 
+	
+			//defaultResult 
+			version
+	
+			) 
+	] ;
+	
+		//calculation
+		platform & " " & version
+	) 
+] 
+Exit Script [ Text Result: $systemVersion ] 

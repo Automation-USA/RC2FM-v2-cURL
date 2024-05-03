@@ -1,0 +1,108 @@
+# Name:
+[POST]__RingCentral-SMS-Send-(param.json)
+
+History:
+Created by: Julio Toledo - Automation USA LLC
+Created: 2020-01-11
+Last Modified: 2024-0211 - Julio Toledo
+Completed code QA
+
+Purpose:
+Creates and sends a new SMS text message.
+
+Parameters:
+JSON object with following values: 
+{
+	"from", 
+	"to", //<-- (JSONArray)
+	"text",
+	"country"
+}
+- Parameter Definitions: 
+	-"from" (Required. Message sender's phone number, value should be one the account phone numbers allowed to send SMS messages)
+	-"to" (Required. Array of SMS Message receivers (one or more destination phone numbers). Can send SMS messages simultaneously to multiple recipients (limit of 40 requests per minute).
+	  Note: Within the USA, sending and receiving SMS is also available for RingCentral Toll-Free Numbers.
+	-"text" (Required. Text of the SMS message. Max length is 1000 symbols (2-byte UTF-16 encoded). 
+	  4-byte encoded UTF-16 charaters are counted as 2 characters, thus restricting the maximum message length to 500 symbols).
+	-"country" (Optional. Target number country information. Either id or isoCode can be specified.)
+
+- Example use:
+	JSONSetElement ( 
+		"{}" ; 
+		[ "from" ; "305-555-1212" ; JSONString ] ;
+		[ "to" ; "[{\"phoneNumber\":\"+13055702631\"},{\"phoneNumber\":\"+17865551212\"}, {\"phoneNumber\":\"+19545551212\"}]" ; "" ];
+		[ "text" ; "Hello world! This is my SMS!" ; JSONString ]
+	)
+
+Global Variables:
+-Requires valid "$$rc.responseTokenOAuth" JSON object (from API session authentication)
+-Requires "$$rc.accessTokenExpiryTime" global variable 
+
+Reference:
+-https://developers.ringcentral.com/api-reference/SMS/createSMSMessage
+-https://developers.ringcentral.com/guide/messaging/sms/sending-sms
+
+Important Notes:
+-Requires FileMaker 16+ native JSON functions
+
+Set Variable [ $scriptName ; Value: "Script: " & Quote ( Get (ScriptName) ) ] 
+# 
+# Escape if parameter is not supplied
+If [ IsEmpty ( Get (ScriptParameter ) ) ] 
+	Perform Script [ Specified: From list ; “[Function]__Get__FM.ErrorDescription( errorCode )” ; Parameter: 958 ]
+	Set Variable [ $ErrorDescription ; Value: Get ( ScriptResult ) ] 
+	Exit Script [ Text Result: JSONSetElement ( "{}" ; [ "errorCode" ; 958 ; JSONNumber ] ; [ "error_description" ; $ErrorDescription & ¶ & ¶  & $scriptName ; JSONString ] ; [ "error" ; True ; "" ] ) ] 
+End If
+# 
+# validate parameter syntax
+If [ Left ( JSONFormatElements (  Get ( ScriptParameter ) ) ; 1 ) = "?" ] 
+	Perform Script [ Specified: From list ; “[Function]__Get__FM.ErrorDescription( errorCode )” ; Parameter: 1710 ]
+	Set Variable [ $ErrorDescription ; Value: Get ( ScriptResult ) ] 
+	Exit Script [ Text Result: JSONSetElement ( "{}" ; [ "errorCode" ; 1710 ; JSONNumber ] ; [ "error_description" ; "Malformed JSON or " & $ErrorDescription & ¶ & ¶ & $scriptName ; JSONString ] ; [ "error" ; True ; "" ] ) ] 
+End If
+# 
+# store script parameter
+Set Variable [ $param.json ; Value: Get ( ScriptParameter ) ] 
+# 
+# parse JSON
+Set Variable [ $fromPhoneNumber ; Value: JSONGetElement ( $param.json ; "from" ) ] 
+Set Variable [ $toPhoneNum ; Value: JSONGetElement ( $param.json ; "to" ) ] 
+Set Variable [ $text ; Value: JSONGetElement ( $param.json ; "text" ) ] 
+# 
+# Validate required parameters
+If [ IsEmpty ( $fromPhoneNumber ) or IsEmpty ( $toPhoneNum ) or IsEmpty ( $text ) ] 
+	Perform Script [ Specified: From list ; “[Function]__Get__FM.ErrorDescription( errorCode )” ; Parameter: 1703 ]
+	Set Variable [ $ErrorDescription ; Value: Get ( ScriptResult ) ] 
+	Exit Script [ Text Result: JSONSetElement ( "{}" ; [ "errorCode" ; 1703 ; JSONNumber ] ; [ "error_description" ; $ErrorDescription & ¶ & ¶ & $scriptName ; JSONString ] ; [ "error" ; True ; "" ] ) ] 
+Else If [ not PatternCount ( $toPhoneNum ; "\"phoneNumber\"") or not PatternCount ( $toPhoneNum ; "[" ) or Left ( JSONGetElement ( $toPhonenum ; ".[0].phoneNumber" ) ; 1 ) = "?" or ValueCount( JSONListValues ( $toPhoneNum ; "." )) < 1 ] 
+	Perform Script [ Specified: From list ; “[Function]__Get__FM.ErrorDescription( errorCode )” ; Parameter: 1710 ]
+	Set Variable [ $ErrorDescription ; Value: Get ( ScriptResult ) ] 
+	Exit Script [ Text Result: JSONSetElement ( "{}" ; [ "errorCode" ; 1710 ; JSONNumber ] ; [ "error_description" ; $ErrorDescription & ¶ & ¶ & $scriptName ; JSONString ] ; [ "error" ; True ; "" ] ) ] 
+Else If [ ValueCount( JSONListValues ( $toPhoneNum ; "." ) ) > 40 ] 
+	Perform Script [ Specified: From list ; “[Function]__Get__FM.ErrorDescription( errorCode )” ; Parameter: 1708 ]
+	Set Variable [ $ErrorDescription ; Value: Get ( ScriptResult ) ] 
+	Exit Script [ Text Result: JSONSetElement ( "{}" ; [ "errorCode" ; 1710 ; JSONNumber ] ; [ "error_description" ; "Number of \"to\" receivers exceeds API limit of 40. " & $ErrorDescription & ¶ & ¶ & $scriptName ; JSONString ] ; [ "error" ; True ; "" ] ) ] 
+End If
+# 
+# validate API token
+Set Variable [ $tokenTimeLeft ; Value: GetAsNumber ( Get ( CurrentHostTimestamp ) - GetAsTimestamp ( $$rc.accessTokenExpiryTime ) ) ] 
+If [ $tokenTimeLeft > -60 ] 
+	Perform Script [ Specified: From list ; “[POST]__RingCentral-Refresh-Token-[Prolong-Session]-( )” ; Parameter:    ]
+End If
+Set Variable [ $token ; Value: JSONGetElement ( $$rc.responseTokenOAuth ; ".access_token" ) ] 
+# 
+# concatenate endpoint URL
+Set Variable [ $url ; Value: $$rc.baseURL & $$rc.endpointSMS ] 
+# 
+# pass supplied parameter to cURL body (JSON payload)
+Set Variable [ $json ; Value: $param.json ] 
+# 
+# Concatenate entire cURL command
+Set Variable [ $cURL ; Value: "-X POST --header \"Content-Type: application/json\" --header \"Accept: application/json\" --header \"Authorization: Bearer " & $token & "\" & --header \"User-Agent: " & $$rc.userAgent & "\" --dump-header \"$$rc.responseSMS.sendHeader\"" & "-d @$json" ] 
+# 
+# clear SMS global var
+Set Variable [ $$rc.responseSMS.send ; Value: "" ] 
+# 
+# [HTTP-POST]
+Insert from URL [ Select ; With dialog: Off ; Target: $$rc.responseSMS.send ; $url ; Verify SSL Certificates ; cURL options: $cURL ] 
+# 

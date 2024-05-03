@@ -1,0 +1,212 @@
+# Name:
+[POST]__RingCentral-FaxOut-(param.json)
+
+History:
+Created by: Julio Toledo - Automation USA LLC
+Created: 2020-01-11
+Last Modified: 2024-0331 - Julio Toledo
+Completed code QA
+
+Purpose:
+Transmits a fax to a destination fax number
+
+Parameters:
+JSON object with following values: 
+{
+	"fromPhoneNumber", 
+	"toPhoneNum", 
+	"covernIndex",
+	"coverText",
+	"attachment_path",
+	"attachment_mime", 
+	"attachmentFileName",
+	"attachmentContent",
+	"attachmentSize" ,
+	"faxResolution",
+	"sendTime"
+}
+- Parameter Definitions: 
+	-"fromPhoneNumber" (Sender's fax number)
+	-"toPhoneNum" (Phone number of the fax recipient, number must be in E.164 (with '+' sign) format)
+	-"coverIndex" (Optional. Cover page template identifier 
+	  If coverIndex is set to '0' [zero] a cover page is not attached
+	  If coverIndex is not specified, the user's default fax cover page is used
+	  For a list of fax cover page template identifiers (1-13), refer to RingCentral's api reference page listed below, 
+	  or call the GET endpoint: /restapi/v1.0/dictionary/fax-cover-page?page=1&perPage=100
+	-"coverText" (Optional. Cover page text message. Maximum cover message length is 1024 symbols.)
+	-"attachment_path" (internal database record path to a FileMaker container field where the fax attachment is stored)
+	-"attachment_mime" (MIME type for a given attachment, for example "application/pdf" or "text/plain"). 
+	  Supported mime types for faxing can be validated by passing the attachment's file name or file extension 
+	  [e.g. ".docx" or "my.File.Name.docx"] to the script: "[Function]__Validate__MIMEtype.FAX( param )"
+	-"attachmentFileName" (full file name of attachment file to be faxed)
+	-"attachmentSize" (file size in bytes of the attachment to be faxed. Fax attachment size (both single and total) is limited to 50Mb)
+	-"faxResolution" (B&W resolution of the fax message. ['High' = 200 dpi,'Low' = 100 dpi])
+	-"sendTime" (Optional. Timestamp indicating when to send then fax. If null, current time, or in the past fax message is sent immediately.)
+
+- Example use of FaxOut endpoint request payload:
+JSONSetElement ( 
+	"{}" ; 
+	[ "fromPhoneNumber" ; "305-555-1212" ; JSONString ] ;
+	[ "toPhoneNum" ; "786-555-1212" ; JSONString ] ;
+	[ "coverIndex" ; 12 ; JSONNumber ] ; //(e.g. coverIndex 12 == 'Modern' fax cover page template)
+	[ "coverText" ; "This is a sample cover page message." ; JSONString ] ;
+	[ "attachment_path" ; GetFieldName ( RC2FM_GLOBALS::tempContainer5  ) ; JSONString ] ;
+	[ "attachment_mime" ; "application/pdf" ; JSONString ] ;
+	[ "attachmentFileName" ; GetContainerAttribute ( GetField  ( GetFieldName ( RC2FM_GLOBALS::tempContainer5  ) ); "fileName" ) ; JSONString ] ;
+	[ "attachmentSize" ; GetContainerAttribute ( GetField  ( GetFieldName ( RC2FM_GLOBALS::tempContainer5  ) ); "fileSize" ) ; JSONString ] ;
+	[ "faxResolution" ; "High" ; JSONString ] ;
+	[ "sendTime" ; Get ( CurrentHostTimeStamp ) ; JSONString ]
+)
+
+Global Variables:
+-Requires valid "$$rc.responseTokenOAuth" JSON object (from API session authentication)
+-Requires "$$rc.accessTokenExpiryTime" global variable 
+
+Reference:
+-https://developers.ringcentral.com/api-reference/Fax/createFaxMessage
+-https://developers.ringcentral.com/guide/messaging/fax/sending-faxes
+
+Important Notes:
+-Requires FileMaker 16+ native JSON functions
+-Requires access to the FM table [as specified in the "attachment_path" parameter]. 
+ Unlike other API requests, this script extracts data directly from an FM container field rather from JSON.
+ Therefore, the user session [or PSoS session] under which this script is executed will require access to that internal database path.
+
+Set Variable [ $scriptName ; Value: "Script: " & Quote ( Get (ScriptName) ) ] 
+# 
+# Escape if parameter is not supplied
+If [ IsEmpty ( Get ( ScriptParameter ) ) ] 
+	Perform Script [ Specified: From list ; “[Function]__Get__FM.ErrorDescription( errorCode )” ; Parameter: 958 ]
+	Set Variable [ $ErrorDescription ; Value: Get ( ScriptResult ) ] 
+	Exit Script [ Text Result: JSONSetElement ( "{}" ; [ "errorCode" ; 958 ; JSONNumber ] ; [ "error_description" ; $ErrorDescription & ¶ & ¶  & $scriptName ; JSONString ] ; [ "error" ; True ; "" ] ) ] 
+End If
+# 
+# validate parameter syntax
+If [ Left ( JSONFormatElements (  Get ( ScriptParameter ) ) ; 1 ) = "?" ] 
+	Perform Script [ Specified: From list ; “[Function]__Get__FM.ErrorDescription( errorCode )” ; Parameter: 1710 ]
+	Set Variable [ $ErrorDescription ; Value: Get ( ScriptResult ) ] 
+	Exit Script [ Text Result: JSONSetElement ( "{}" ; [ "errorCode" ; 1710 ; JSONNumber ] ; [ "error_description" ; "Malformed JSON or " & $ErrorDescription & ¶ & ¶ & $scriptName ; JSONString ] ; [ "error" ; True ; "" ] ) ] 
+End If
+# 
+# store script parameter
+Set Variable [ $param.json ; Value: Get ( ScriptParameter ) ] 
+# 
+# parse JSON
+Set Variable [ $fromPhoneNumber ; Value: JSONGetElement ( $param.json ; "fromPhoneNumber" ) ] 
+Set Variable [ $toPhoneNum ; Value: JSONGetElement ( $param.json ; "toPhoneNum" ) ] 
+Set Variable [ $coverIndex ; Value: JSONGetElement ( $param.json ; "coverIndex" ) ] 
+Set Variable [ $coverText ; Value: JSONGetElement ( $param.json ; "coverText" ) ] 
+Set Variable [ $attachmentPath ; Value: JSONGetElement ( $param.json ; "attachment_path" ) ] 
+Set Variable [ $attachment_mime ; Value: JSONGetElement ( $param.json ; "attachment_mime" ) ] 
+Set Variable [ $attachmentFileName ; Value: JSONGetElement ( $param.json ; "attachmentFileName" ) ] 
+Set Variable [ $attachmentFileSize ; Value: JSONGetElement ( $param.json ; "attachmentFileSize" ) ] 
+Set Variable [ $faxResolution ; Value: JSONGetElement ( $param.json ; "faxResolution" ) ] 
+Set Variable [ $sendTime ; Value: JSONGetElement ( $param.json ; "sendTime" ) ] 
+# 
+# Validate required parameters
+If [ IsEmpty ( $fromPhoneNumber ) or IsEmpty ( $toPhoneNum ) or IsEmpty ( $attachmentFileSize ) or IsEmpty ( $attachmentPath ) ] 
+	Perform Script [ Specified: From list ; “[Function]__Get__FM.ErrorDescription( errorCode )” ; Parameter: 1707 ]
+	Set Variable [ $ErrorDescription ; Value: Get ( ScriptResult ) ] 
+	Exit Script [ Text Result: JSONSetElement ( "{}" ; [ "errorCode" ; 1707 ; JSONNumber ] ; [ "error_description" ; $ErrorDescription & ¶ & ¶ & $scriptName ; JSONString ] ; [ "error" ; True ; "" ] ) ] 
+	# 
+	# validate attachment file size != null
+Else If [ $attachmentFileSize ≤ 8 //attachment empty (≤ 8 bytes) ] 
+	Perform Script [ Specified: From list ; “[Function]__Get__FM.ErrorDescription( errorCode )” ; Parameter: 1708 ]
+	Set Variable [ $ErrorDescription ; Value: Get ( ScriptResult ) ] 
+	Exit Script [ Text Result: JSONSetElement ( "{}" ; [ "errorCode" ; 1708 ; JSONNumber ] ; [ "error_description" ; "Fax attachment size = " & $attachmentFileSize & ". " & $ErrorDescription & ¶ & ¶ & $scriptName ; JSONString ] ; [ "error" ; True ; "" ] ) ] 
+	# 
+	# validate attachment file size <= max size
+Else If [ Floor ( Ln ( $attachmentFileSize ) / Ln ( 1024 ) ) > 49.8 //attachment > max size (50 Mb) ] 
+	Perform Script [ Specified: From list ; “[Function]__Get__FM.ErrorDescription( errorCode )” ; Parameter: 511 ]
+	Set Variable [ $ErrorDescription ; Value: Get ( ScriptResult ) ] 
+	Exit Script [ Text Result: JSONSetElement ( "{}" ; [ "errorCode" ; 511 ; JSONNumber ] ; [ "error_description" ; "Fax attachment size > 50 Mb, " & $ErrorDescription & ¶ & ¶ & $scriptName ; JSONString ] ; [ "error" ; True ; "" ] ) ] 
+	# 
+Else
+	# validate attachment MIME type
+	If [ MiddleWords ( FieldType ( Get(FileName) ; GetFieldName ( $attachmentPath ) ) ; 2 ; 1 ) = "Text" ] 
+		Set Variable [ $attachment_mime ; Value: "text/plain" ] 
+	Else
+		Set Variable [ $fileExtension ; Value: "." & Substitute ( 	RightValues ( Substitute ( $attachmentFileName ; "." ; ¶ ) ; 1 ) ; 	¶ ; "" ) ] 
+		Perform Script [ Specified: From list ; “[Function]__Validate__MIMEtype.FAX( param )” ; Parameter: $fileExtension ]
+		Set Variable [ $attachment_mime ; Value: Get ( ScriptResult ) ] 
+		If [ $attachment_mime = "417" ] 
+			Show Custom Dialog [ "error" ; "Attachments of file type \"" & $fileExtension & "\" are not supported by RingCentral® FaxOut" ] 
+			Exit Script [ Text Result: JSONSetElement ( "{}" ; [ "errorCode" ; 503 ; JSONNumber ] ; [ "error_description" ; "Attachments of file type \"" & $fileExtension & "\" are not supported." & ¶ & ¶ & $scriptName ; JSONString ] ; [ "error" ; True ; "" ] ) ] 
+		Else If [ $attachment_mime = "400" ] 
+			Exit Script [ Text Result: JSONSetElement ( "{}" ; [ "errorCode" ; 509 ; JSONNumber ] ; [ "error_description" ; "Unable to determine attachment file type. " & ¶ & ¶ & $scriptName ; JSONString ] ; [ "error" ; True ; "" ] ) ] 
+		End If
+	End If
+End If
+# 
+# validate "sendTime" parameter
+If [ IsEmpty ($sendTime ) or not IsValid ( $sendTime ) ] 
+	Perform Script [ Specified: From list ; “[Function]__Convert__Timestamp.toUTC( timestamp )” ; Parameter: Get ( CurrentHostTimestamp ) ]
+	Set Variable [ $sendTime ; Value: Get ( ScriptResult ) ] 
+Else
+	Perform Script [ Specified: From list ; “[Function]__Convert__Timestamp.toUNIXtime( timestamp )” ; Parameter: $sendTime ]
+	Set Variable [ $sendTime ; Value: Get ( ScriptResult ) ] 
+End If
+# 
+# validate "coverText" and "coverIndex" parameters (default "coverIndex" to 12 if required)
+Set Variable [ 
+	$coverText ; 
+	Value: Let ( 
+		[ 
+			coverText = If ( Length ( $coverText ) > 1023 ; Left ( $coverText ; 1024 ) ; $coverText ) ; 
+			$coverIndex = Case ( 
+				//test1; result1 ;
+				not IsEmpty ( coverText ) and IsEmpty ( $coverIndex ); 12 ; 
+	
+				//test2 ; result2 ;
+				IsEmpty ( coverText ) and IsEmpty ( $coverIndex ) ; 0 ;
+	
+				//test3 ; result3 ;
+				not IsEmpty ( coverText ) and (GetAsNumber ( $coverIndex ) > 13 or GetAsNumber ( $coverIndex ) < 1 ) ; 12 ;
+	
+				//defaultResult
+				GetAsNumber ( $coverIndex )
+			)
+		];
+	
+		//calculation result
+		coverText
+	)
+] 
+# 
+# validate API token
+Set Variable [ $tokenTimeLeft ; Value: GetAsNumber ( Get ( CurrentHostTimestamp ) - GetAsTimestamp ( $$rc.accessTokenExpiryTime ) ) ] 
+If [ $tokenTimeLeft > -60 ] 
+	Perform Script [ Specified: From list ; “[POST]__RingCentral-Refresh-Token-[Prolong-Session]-( )” ; Parameter:    ]
+End If
+Set Variable [ $token ; Value: JSONGetElement ( $$rc.responseTokenOAuth ; ".access_token" ) ] 
+# 
+# concatenate endpoint
+Set Variable [ $url ; Value: $$rc.baseURL & $$rc.endpointFaxOut ] 
+# 
+# concatenate multipart/mixed cURL payload
+Set Variable [ 
+	$json ; 
+	Value: JSONFormatElements 
+	( 
+		JSONSetElement 
+		( 
+			"{}" ; 
+			[ ".to[0].phoneNumber" ; $toPhoneNum ; JSONString] ;
+			[ "faxResolution" ; "High" ; JSONString] ;
+			[ "sendTime" ; $sendTime ; JSONString] ;
+			[ "coverIndex" ; $coverIndex ; JSONString] ;
+			[ "coverPageText" ; $coverText ; JSONString]
+		)
+	)
+] 
+# 
+# Concatenate entire cURL command
+Set Variable [ $cURL ; Value: "-X POST --header \"Accept: application/json\" --header \"Authorization: Bearer " & $token & "\" --header \"Content-Type: multipart/mixed\" --header \"User-Agent: " & $$rc.userAgent & "\" --dump-header \"$$rc.responseFaxOutHeader\" -F \"request=@$json…" ] 
+# 
+# clear faxout global vars
+Set Variable [ $$rc.responseFaxOut ; Value: "" ] 
+Set Variable [ $$rc.responseFaxOutHeader ; Value: "" ] 
+# 
+# [HTTP-POST]
+Insert from URL [ Select ; With dialog: Off ; Target: $$rc.responseFaxOut ; $url ; Verify SSL Certificates ; cURL options: $cURL ] 
+# 

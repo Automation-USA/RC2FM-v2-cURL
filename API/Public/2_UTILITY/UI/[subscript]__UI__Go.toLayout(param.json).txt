@@ -1,0 +1,239 @@
+# Name:
+[subscript]__UI__Go.toLayout(param.json)
+
+History:
+Created by Automation USA, LLC
+Created: 9-11-2017
+Last Modified: 2023-07-08 - Julio Toledo
+Modified error reporting to use script "[Function]__Get__FM.ErrorDescription( errorCode )" rather than a custom function.
+
+Purpose:
+Navigates to layout by name (in the current file) and executes layout animation as specified, optionally closes a window
+
+Parameters:
+JSON object with following values:
+{
+	"Layout_Name", 
+	"Animation", 
+	"closeWindow", <-- boolean flag
+	"windowName" <-- name of Window to close (defaults to current window)
+}
+
+Important Notes:
+-Requires FileMaker 16+ native JSON functions
+
+Set Variable [ $scriptName ; Value: "Script: " & Quote ( Get (ScriptName) ) ] 
+Allow User Abort [ On ]
+Close Popover
+Go to Field [ Select/perform ] 
+# 
+# Escape if parameter is not supplied
+If [ IsEmpty ( Get ( ScriptParameter ) ) ] 
+	Perform Script [ Specified: From list ; “[Function]__Get__FM.ErrorDescription( errorCode )” ; Parameter: 958 ]
+	Set Variable [ $ErrorDescription ; Value: Get ( ScriptResult ) ] 
+	Exit Script [ Text Result: JSONSetElement ( "{}" ; [ "errorCode" ; 958 ; JSONNumber ] ; [ "error_description" ; $ErrorDescription & ¶ & ¶ & $scriptName ; JSONString ] ; [ "error" ; True ; "" ] ) ] 
+End If
+# 
+# validate script parameter
+If [ Left ( JSONFormatElements (  Get ( ScriptParameter ) ) ; 1 ) = "?" ] 
+	Perform Script [ Specified: From list ; “[Function]__Get__FM.ErrorDescription( errorCode )” ; Parameter: 1710 ]
+	Set Variable [ $ErrorDescription ; Value: Get ( ScriptResult ) ] 
+	Exit Script [ Text Result: JSONSetElement ( "{}" ; [ "errorCode" ; 1710 ; JSONNumber ] ; [ "error_description" ; "Malformed JSON or " & $ErrorDescription & ¶ & ¶ & $scriptName ; JSONString ] ; [ "error" ; True ; "" ] ) ] 
+Else
+	# store script parameter
+	Set Variable [ $param.json ; Value: Get ( ScriptParameter ) ] 
+End If
+# 
+# parse JSON
+Set Variable [ $LayoutName ; Value: JSONGetElement ( $param.json ; "Layout_Name" ) ] 
+If [ PatternCount ( $param.json ; "Animation" ) ] 
+	Set Variable [ $Animation ; Value: JSONGetElement ( $param.json ; "Animation" ) ] 
+End If
+If [ PatternCount ( $param.json ; "closeWindow" ) ] 
+	Set Variable [ $closeWindow ; Value: JSONGetElement ( $param.json ; "closeWindow" ) ] 
+End If
+If [ PatternCount ( $param.json ; "windowName" ) ] 
+	Set Variable [ $windowName ; Value: JSONGetElement ( $param.json ; "windowName" ) ] 
+End If
+# 
+# validate parameter(s)
+If [ IsEmpty ( $LayoutName ) ] 
+	Perform Script [ Specified: From list ; “[Function]__Get__FM.ErrorDescription( errorCode )” ; Parameter: 1710 ]
+	Set Variable [ $ErrorDescription ; Value: Get ( ScriptResult ) ] 
+	Exit Script [ Text Result: JSONSetElement ( "{}" ; [ "errorCode" ; 958 ; JSONNumber ] ; [ "error_description" ; $ErrorDescription & ¶ & ¶ & $scriptName ; JSONString ] ; [ "error" ; True ; "" ] ) ] 
+End If
+# 
+If [ IsEmpty ( FilterValues ( LayoutNames ( Get ( FileName ) ) ; $LayoutName ) ) ] 
+	Perform Script [ Specified: From list ; “[Function]__Get__FM.ErrorDescription( errorCode )” ; Parameter: 105 ]
+	Set Variable [ $ErrorDescription ; Value: Get ( ScriptResult ) ] 
+	Exit Script [ Text Result: JSONSetElement ( "{}" ; [ "errorCode" ; 105 ; JSONNumber ] ; [ "error_description" ; $ErrorDescription & ¶ & ¶ & $scriptName ; JSONString ] ; [ "error" ; True ; "" ] ) ] 
+End If
+# 
+# Proceed with navigation
+If [ $closeWindow = True ] 
+	If [ IsEmpty ( $windowName ) ] 
+		Close Window [ Current Window ] 
+	Else
+		Set Error Capture [ On ]
+		Close Window [ Name: $windowName ; Current file ] 
+		Set Error Capture [ Off ]
+	End If
+End If
+# 
+If [ IsEmpty ( $Animation ) ] 
+	Set Error Capture [ On ]
+	Go to Layout [ $LayoutName ; Animation: None ]
+	Set Variable [ $result ; Value: Get ( LastError ) ] 
+	If [ $result = 0 ] 
+		Exit Script [ Text Result: JSONSetElement ( "{}" ; [ "Success" ; True ; "" ] ) ] 
+	Else
+		Perform Script [ Specified: From list ; “[Function]__Get__FM.ErrorDescription( errorCode )” ; Parameter: $result ]
+		Set Variable [ $ErrorDescription ; Value: Get ( ScriptResult ) ] 
+		Exit Script [ Text Result: JSONSetElement ( "{}" ; [ "errorCode" ; $result ; JSONNumber ] ; [ "error_description" ; $ErrorDescription ; JSONString ] ; [ "error" ; True ; "" ] ) ] 
+	End If
+End If
+# 
+If [ $Animation = "Slide in from Left" ] 
+	Set Error Capture [ On ]
+	Go to Layout [ $LayoutName ; Animation: Slide in from Left ]
+	If [ $result = 0 ] 
+		Exit Script [ Text Result: JSONSetElement ( "{}" ; [ "Success" ; True ; "" ] ) ] 
+	Else
+		Perform Script [ Specified: From list ; “[Function]__Get__FM.ErrorDescription( errorCode )” ; Parameter: $result ]
+		Set Variable [ $ErrorDescription ; Value: Get ( ScriptResult ) ] 
+		Exit Script [ Text Result: JSONSetElement ( "{}" ; [ "errorCode" ; $result ; JSONNumber ] ; [ "error_description" ; $ErrorDescription ; JSONString ] ; [ "error" ; True ; "" ] ) ] 
+	End If
+End If
+# 
+If [ $Animation = "Slide in from Right" ] 
+	Set Error Capture [ On ]
+	Go to Layout [ $LayoutName ; Animation: Slide in from Right ]
+	If [ $result = 0 ] 
+		Exit Script [ Text Result: JSONSetElement ( "{}" ; [ "Success" ; True ; "" ] ) ] 
+	Else
+		Perform Script [ Specified: From list ; “[Function]__Get__FM.ErrorDescription( errorCode )” ; Parameter: $result ]
+		Set Variable [ $ErrorDescription ; Value: Get ( ScriptResult ) ] 
+		Exit Script [ Text Result: JSONSetElement ( "{}" ; [ "errorCode" ; $result ; JSONNumber ] ; [ "error_description" ; $ErrorDescription ; JSONString ] ; [ "error" ; True ; "" ] ) ] 
+	End If
+End If
+# 
+If [ $Animation = "Slide in from Bottom" ] 
+	Set Error Capture [ On ]
+	Go to Layout [ $LayoutName ; Animation: Slide in from Bottom ]
+	If [ $result = 0 ] 
+		Exit Script [ Text Result: JSONSetElement ( "{}" ; [ "Success" ; True ; "" ] ) ] 
+	Else
+		Perform Script [ Specified: From list ; “[Function]__Get__FM.ErrorDescription( errorCode )” ; Parameter: $result ]
+		Set Variable [ $ErrorDescription ; Value: Get ( ScriptResult ) ] 
+		Exit Script [ Text Result: JSONSetElement ( "{}" ; [ "errorCode" ; $result ; JSONNumber ] ; [ "error_description" ; $ErrorDescription ; JSONString ] ; [ "error" ; True ; "" ] ) ] 
+	End If
+End If
+# 
+If [ $Animation = "Slide out to Left" ] 
+	Set Error Capture [ On ]
+	Go to Layout [ $LayoutName ; Animation: Slide out to Left ]
+	If [ $result = 0 ] 
+		Exit Script [ Text Result: JSONSetElement ( "{}" ; [ "Success" ; True ; "" ] ) ] 
+	Else
+		Perform Script [ Specified: From list ; “[Function]__Get__FM.ErrorDescription( errorCode )” ; Parameter: $result ]
+		Set Variable [ $ErrorDescription ; Value: Get ( ScriptResult ) ] 
+		Exit Script [ Text Result: JSONSetElement ( "{}" ; [ "errorCode" ; $result ; JSONNumber ] ; [ "error_description" ; $ErrorDescription ; JSONString ] ; [ "error" ; True ; "" ] ) ] 
+	End If
+End If
+# 
+If [ $Animation = "Slide out to Right" ] 
+	Set Error Capture [ On ]
+	Go to Layout [ $LayoutName ; Animation: Slide out to Right ]
+	If [ $result = 0 ] 
+		Exit Script [ Text Result: JSONSetElement ( "{}" ; [ "Success" ; True ; "" ] ) ] 
+	Else
+		Perform Script [ Specified: From list ; “[Function]__Get__FM.ErrorDescription( errorCode )” ; Parameter: $result ]
+		Set Variable [ $ErrorDescription ; Value: Get ( ScriptResult ) ] 
+		Exit Script [ Text Result: JSONSetElement ( "{}" ; [ "errorCode" ; $result ; JSONNumber ] ; [ "error_description" ; $ErrorDescription ; JSONString ] ; [ "error" ; True ; "" ] ) ] 
+	End If
+End If
+# 
+If [ $Animation = "Slide out to Bottom" ] 
+	Set Error Capture [ On ]
+	Go to Layout [ $LayoutName ; Animation: Slide out to Bottom ]
+	If [ $result = 0 ] 
+		Exit Script [ Text Result: JSONSetElement ( "{}" ; [ "Success" ; True ; "" ] ) ] 
+	Else
+		Perform Script [ Specified: From list ; “[Function]__Get__FM.ErrorDescription( errorCode )” ; Parameter: $result ]
+		Set Variable [ $ErrorDescription ; Value: Get ( ScriptResult ) ] 
+		Exit Script [ Text Result: JSONSetElement ( "{}" ; [ "errorCode" ; $result ; JSONNumber ] ; [ "error_description" ; $ErrorDescription ; JSONString ] ; [ "error" ; True ; "" ] ) ] 
+	End If
+End If
+# 
+If [ $Animation = "Flip from Left" ] 
+	Set Error Capture [ On ]
+	Go to Layout [ $LayoutName ; Animation: Flip from Left ]
+	If [ $result = 0 ] 
+		Exit Script [ Text Result: JSONSetElement ( "{}" ; [ "Success" ; True ; "" ] ) ] 
+	Else
+		Perform Script [ Specified: From list ; “[Function]__Get__FM.ErrorDescription( errorCode )” ; Parameter: $result ]
+		Set Variable [ $ErrorDescription ; Value: Get ( ScriptResult ) ] 
+		Exit Script [ Text Result: JSONSetElement ( "{}" ; [ "errorCode" ; $result ; JSONNumber ] ; [ "error_description" ; $ErrorDescription ; JSONString ] ; [ "error" ; True ; "" ] ) ] 
+	End If
+End If
+# 
+If [ $Animation = "Flip from Right" ] 
+	Set Error Capture [ On ]
+	Go to Layout [ $LayoutName ; Animation: Flip from Right ]
+	If [ $result = 0 ] 
+		Exit Script [ Text Result: JSONSetElement ( "{}" ; [ "Success" ; True ; "" ] ) ] 
+	Else
+		Perform Script [ Specified: From list ; “[Function]__Get__FM.ErrorDescription( errorCode )” ; Parameter: $result ]
+		Set Variable [ $ErrorDescription ; Value: Get ( ScriptResult ) ] 
+		Exit Script [ Text Result: JSONSetElement ( "{}" ; [ "errorCode" ; $result ; JSONNumber ] ; [ "error_description" ; $ErrorDescription ; JSONString ] ; [ "error" ; True ; "" ] ) ] 
+	End If
+End If
+# 
+If [ $Animation = "Zoom In" ] 
+	Set Error Capture [ On ]
+	Go to Layout [ $LayoutName ; Animation: Zoom In ]
+	If [ $result = 0 ] 
+		Exit Script [ Text Result: JSONSetElement ( "{}" ; [ "Success" ; True ; "" ] ) ] 
+	Else
+		Perform Script [ Specified: From list ; “[Function]__Get__FM.ErrorDescription( errorCode )” ; Parameter: $result ]
+		Set Variable [ $ErrorDescription ; Value: Get ( ScriptResult ) ] 
+		Exit Script [ Text Result: JSONSetElement ( "{}" ; [ "errorCode" ; $result ; JSONNumber ] ; [ "error_description" ; $ErrorDescription ; JSONString ] ; [ "error" ; True ; "" ] ) ] 
+	End If
+End If
+# 
+If [ $Animation = "Zoom Out" ] 
+	Set Error Capture [ On ]
+	Go to Layout [ $LayoutName ; Animation: Zoom Out ]
+	If [ $result = 0 ] 
+		Exit Script [ Text Result: JSONSetElement ( "{}" ; [ "Success" ; True ; "" ] ) ] 
+	Else
+		Perform Script [ Specified: From list ; “[Function]__Get__FM.ErrorDescription( errorCode )” ; Parameter: $result ]
+		Set Variable [ $ErrorDescription ; Value: Get ( ScriptResult ) ] 
+		Exit Script [ Text Result: JSONSetElement ( "{}" ; [ "errorCode" ; $result ; JSONNumber ] ; [ "error_description" ; $ErrorDescription ; JSONString ] ; [ "error" ; True ; "" ] ) ] 
+	End If
+End If
+# 
+If [ $Animation = "Cross Dissolve" ] 
+	Set Error Capture [ On ]
+	Go to Layout [ $LayoutName ; Animation: Cross Dissolve ]
+	If [ $result = 0 ] 
+		Exit Script [ Text Result: JSONSetElement ( "{}" ; [ "Success" ; True ; "" ] ) ] 
+	Else
+		Exit Script [ Text Result: JSONSetElement ( "{}" ; [ "errorCode" ; $result ; JSONNumber ] ; [ "error_description" ; ErrorDescription ( $result ) ; JSONString ] ; [ "error" ; True ; "" ] ) ] 
+	End If
+End If
+# 
+If [ not IsEmpty ( $Animation ) ] 
+	Set Error Capture [ On ]
+	Go to Layout [ $LayoutName ; Animation: None ]
+	Set Variable [ $result ; Value: Get ( LastError ) ] 
+	If [ $result = 0 ] 
+		Exit Script [ Text Result: JSONSetElement ( "{}" ; [ "Success" ; True ; "" ] ) ] 
+	Else
+		Perform Script [ Specified: From list ; “[Function]__Get__FM.ErrorDescription( errorCode )” ; Parameter: $result ]
+		Set Variable [ $ErrorDescription ; Value: Get ( ScriptResult ) ] 
+		Exit Script [ Text Result: JSONSetElement ( "{}" ; [ "errorCode" ; $result ; JSONNumber ] ; [ "error_description" ; $ErrorDescription ; JSONString ] ; [ "error" ; True ; "" ] ) ] 
+	End If
+End If
+# 
+# 

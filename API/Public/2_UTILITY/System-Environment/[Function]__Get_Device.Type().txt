@@ -1,0 +1,25 @@
+# Name:
+[Function]__Get_Device.Type()
+
+History:
+Created by: Julio Toledo - Automation USA LLC
+Created: 2023-07-30
+Last Modified: 2023-0730 - Julio Toledo
+Completed code QA
+
+Purpose:
+Returns type of computer or mobile device
+
+Important Notes:
+None
+
+Exit Script [ Text Result: Let ( 
+		[
+		deviceID = Get (Device) ; 
+		deviceType = Choose ( deviceID ; "Unknown" ; "Macintosh" ; "Windows" ; "iPad" ; "iPhone"; "Android"; "Unknown")
+		] ; 
+	
+		//calculation 
+		deviceType
+	) 
+] 

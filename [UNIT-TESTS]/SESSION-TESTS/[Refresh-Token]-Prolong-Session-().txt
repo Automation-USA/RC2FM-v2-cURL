@@ -1,0 +1,87 @@
+# Name:
+[Refresh-Token]-Prolong-Session-()
+
+Created by: Julio Toledo - Automation USA LLC
+
+Purpose:
+Tests using the refresh token to renew API session token (prolong the session beyond the original token's TTL)
+
+Parameters:
+None
+
+Global Variables:
+-Requires "$$rc.refreshTokenExpiryTime" (stores a time value calculated at login time in script "[POST]__RingCentral-Get-Token-[Login]-(param.json)")
+-Requires "$$rc.accessTokenExpiryTime" (stores a value calculated at login time in script "[POST]__RingCentral-Get-Token-[Login]-(param.json)")
+
+Important Notes:
+-Requires FileMaker 16+ native JSON functions
+
+Allow User Abort [ Off ]
+Set Variable [ $scriptName ; Value: "Script: " & Quote ( Get (ScriptName) ) ] 
+# 
+# validate required globals
+If [ IsEmpty ( $$rc.accessTokenExpiryTime ) or IsEmpty ( $$rc.refreshTokenExpiryTime ) ] 
+	Perform Script [ Specified: From list ; “[Function]__Get__FM.ErrorDescription( errorCode )” ; Parameter: 958 ]
+	Set Variable [ $ErrorDescription ; Value: Get ( ScriptResult ) ] 
+	Exit Script [ Text Result: 
+		JSONSetElement ( 
+			"{}" ; 
+			[ "errorCode" ; 958 ; JSONNumber ] ; 
+			[ "error_description" ; "Global variable " & $ErrorDescription & ¶ & ¶  & $scriptName ; JSONString ] ; 
+			[ "error" ; True ; "" ] 
+		) 
+	] 
+End If
+# 
+If [ not IsValid ( GetAsTimestamp ( $$rc.refreshTokenExpiryTime ) ) or not IsValid ( GetAsTimestamp ( $$rc.accessTokenExpiryTime ) ) ] 
+	Perform Script [ Specified: From list ; “[Function]__Get__FM.ErrorDescription( errorCode )” ; Parameter: 1708 ]
+	Set Variable [ $ErrorDescription ; Value: Get ( ScriptResult ) ] 
+	Exit Script [ Text Result: 
+		JSONSetElement ( 
+			"{}" ; 
+			[ "errorCode" ; 1708 ; JSONNumber ] ; 
+			[ "error_description" ; "Global variable " & $ErrorDescription & ¶ & ¶  & $scriptName ; JSONString ] ; 
+			[ "error" ; True ; "" ] 
+		) 
+	] 
+End If
+# 
+# calculate time left on access token and refresh token
+Set Variable [ $tokenTimeLeft ; Value: GetAsNumber ( GetAsTimestamp ( $$rc.accessTokenExpiryTime ) - Get ( CurrentHostTimestamp ) ) ] 
+Set Variable [ $refreshTokenTimeLeft ; Value: GetAsNumber ( GetAsTimestamp ( $$rc.refreshTokenExpiryTime ) - Get ( CurrentHostTimestamp ) ) ] 
+# 
+# only refresh if access token has less than 60 seconds left
+If [ $tokenTimeLeft < 60 ] 
+	# 
+	If [ $refreshTokenTimeLeft > 30 ] 
+		# if refresh token is still valid, use refresh token to call token API endpoint
+		Perform Script [ Specified: From list ; “[POST]__RingCentral-Refresh-Token-[Prolong-Session]-( )” ; Parameter:    ]
+		# 
+		# Validate API response
+		If [ PatternCount ( $$rc.responseTokenOAuth ; "access_token" ) ] 
+			# API access token renewal (aka "refresh") was successful
+			Set Variable [ $$rc.accessTokenExpiryTime ; Value: Get ( CurrentHostTimestamp ) + $tokenTTL ] 
+			# 
+		Else If [ PatternCount ( $$rc.responseTokenOAuth ; "TokenExpired" ) ] 
+			# API access token has expired and can no longer be refreshed, call "Login" script to begin a new API session
+			Perform Script [ Specified: From list ; “[Get-Token]-New-Session-[JWT-auth]-( )” ; Parameter:    ]
+			# 
+		Else If [ PatternCount ( $$rc.responseTokenOAuth ; "error" ) ] 
+			# There was an error. Examine "$$rc.responseTokenOAuth" variable for API response details
+			Set Variable [ 
+				$$rc.responseTokenOAuth ; 
+				Value: JSONSetElement ( 	
+					$$rc.responseTokenOAuth ; 	
+					[ "access_token" ; "\"" & $token & "\"" ; JSONString ] ; 	
+					[ "refresh_token" ;  "\"" & $refresh_token & "\"" ; JSONString ] 
+				) 
+			] 
+		End If
+		# 
+	Else
+		# if there's too little time left on refresh token, log out and log in again to begin a new API session
+		Perform Script [ Specified: From list ; “[POST]__RingCentral-Revoke-Tokens-[End-Session]-( )” ; Parameter:    ]
+		Perform Script [ Specified: From list ; “[Get-Token]-New-Session-[JWT-auth]-( )” ; Parameter:    ]
+	End If
+	# 
+End If

@@ -1,0 +1,152 @@
+# Name:
+[Insert]__Write-to-FM_UnifiedLog(param.json)
+
+History:
+Created by: Julio Toledo - Automation USA LLC
+Created: 2020-01-11
+Last Modified: 2024-0211 - Julio Toledo
+Completed code QA
+
+Purpose:
+Iterates thru a JSON payload and creates new FM recordings, inserting matching object names into corresponding FM field names
+
+Important Notes:
+
+-Requires FileMaker 16+ native JSON functions
+-Requires dedicated FM layouts: 
+["ScriptUse__RC2FMv2_UNIFIED_LOGS", "ScriptUse__RC2FMv2_CALL_LEGS", "ScriptUse__RC2FMv2_ATTACHMENTS", "ScriptUse__RC2FMv2_MESSAGE_RECIPIENTS"], 
+-These dedicated FM layouts are attached to dedicated FM table views (table-occurences): 
+["RC2FMv2_UNIFIED_LOGS", "RC2FMv2_CALL_LEGS", "RC2FMv2_ATTACHMENTS", "RC2FMv2_MESSAGE_RECIPIENTS"]
+
+Set Variable [ $scriptName ; Value: "Script: " & Quote ( Get (ScriptName) ) ] 
+# 
+# Escape if parameter is not supplied
+If [ IsEmpty ( Get (ScriptParameter ) ) ] 
+	Perform Script [ Specified: From list ; “[Function]__Get__FM.ErrorDescription( errorCode )” ; Parameter: 958 ]
+	Set Variable [ $ErrorDescription ; Value: Get ( ScriptResult ) ] 
+	Exit Script [ Text Result: JSONSetElement ( "{}" ; [ "errorCode" ; 958 ; JSONNumber ] ; [ "error_description" ; $ErrorDescription & ¶ & ¶  & $scriptName ; JSONString ] ; [ "error" ; True ; "" ] ) ] 
+End If
+# 
+# validate parameter syntax
+If [ Left ( JSONFormatElements (  Get ( ScriptParameter ) ) ; 1 ) = "?" ] 
+	Perform Script [ Specified: From list ; “[Function]__Get__FM.ErrorDescription( errorCode )” ; Parameter: 1710 ]
+	Set Variable [ $ErrorDescription ; Value: Get ( ScriptResult ) ] 
+	Exit Script [ Text Result: JSONSetElement ( "{}" ; [ "errorCode" ; 1710 ; JSONNumber ] ; [ "error_description" ; "Malformed JSON or " & $ErrorDescription & ¶ & ¶ & $scriptName ; JSONString ] ; [ "error" ; True ; "" ] ) ] 
+End If
+# 
+# store script parameter
+Set Variable [ $param.json ; Value: Get ( ScriptParameter ) ] 
+# 
+# parse JSON
+Set Variable [ $start ; Value: Get(CurrentTimeUTCMilliseconds) ] 
+Set Variable [ $json ; Value: JSONGetElement ( $param.json ; ".records" ) ] 
+Set Variable [ $layoutName ; Value: JSONGetElement ( $param.json ; "layoutName" ) ] 
+Set Variable [ $payloadType ; Value: JSONGetElement ( $param.json ; "payloadType" ) ] 
+Set Variable [ $json ; Value: JSONListValues ( $json ; "" ) ] 
+Set Variable [ $objectCount ; Value: ValueCount ( $json ) ] 
+# 
+# navigate to layout
+Freeze Window
+Go to Layout [ $layoutName ; Animation: None ]
+View As [ View as Form ]
+# 
+# insert records
+Allow User Abort [ On ]
+Set Variable [ $thisTable ; Value: Get ( LayoutTableName ) ] 
+Set Variable [ 
+	$fieldNames ; 
+	Value: Let ( fieldList = FieldNames ( Get ( FileName ) ; Get ( LayoutName ) ) ; 
+		//calculation 
+		Case ( 
+	
+			$payloadType = "detailed" ; "legs¶" & fieldList ; 
+			//appends 'legs' to fieldList for parsing detailed call-log sub-array
+	
+			$payloadType = "attachments" ; "recipients¶attachments¶" & fieldList ; 
+			//appends 'recipients' and 'attachments' to fieldList for parsing message-log sub-arrays
+	
+			fieldList
+			//defaultResult
+	
+		)
+	)
+] 
+Set Variable [ $fieldCount ; Value: ValueCount ( $fieldNames ) ] 
+Set Variable [ $i ; Value: 1 ] 
+Loop
+	Set Variable [ $thisone ; Value: GetValue ( $json ; 1 ) ] 
+	New Record/Request
+	Set Field By Name [ $thisTable & "::_asJSON_RC" ; $thisone ] 
+	If [ $payloadType = "detailed" or $payloadType = "attachments" ] 
+		Set Variable [ $_id ; Value: JSONGetElement ( $thisone ; "id" ) ] 
+		Set Variable [ $_kfn_logId ; Value: GetField ( $thisTable & "::_kpn_id" ) ] 
+	End If
+	# 
+	Set Variable [ $innerCount ; Value: 1 ] 
+	Loop
+		Set Variable [ $thisFieldName ; Value: GetValue ( $fieldNames ; $innerCount ) ] 
+		Set Variable [ $thisFieldPath ; Value: $thisTable & "::" & $thisFieldName ] 
+		Set Variable [ $jsonPath ; Value: 
+			Case ( 	PatternCount ( $thisFieldName ; "_" ) ; 
+				Substitute ( $thisFieldName ; "_" ; "." ) ; 	
+				//defaultResult 	
+				$thisFieldName 
+			) 
+		] 
+		Set Variable [ $jsonValue ; Value: JSONGetElement ( $thisOne ; $jsonPath ) ] 
+		#  
+		If [ $thisFieldName = "legs" or $thisFieldName = "attachments" or $thisFieldName = "recipients" ] 
+			# handle sub-arrays
+			Set Variable [ $recordPayload ; Value: 
+				If ( 	
+					$thisFieldName = "recipients" ; 
+					JSONGetElement ( $thisone ; ".to" ); 	
+					$jsonValue 
+				) 
+			] 
+			Set Variable [ $destinationLayout ; Value: 
+				Case ( 			
+					$thisFieldName = "legs" ; "ScriptUse__RC2FMv2_CALL_LEGS" ; 				
+					$thisFieldName = "attachments" ; "ScriptUse__RC2FMv2_ATTACHMENTS" ;			
+					$thisFieldName = "recipients" ; "ScriptUse__RC2FMv2_MESSAGE_RECIPIENTS"				
+				)
+			] 
+			Set Variable [ $payload ; Value: 
+				JSONSetElement ( "" ; 	
+					["records" ; $recordPayload ; "" ] ; 	
+					["_id" ; $_id ; JSONString] ; 	
+					["_kfn_logId" ; $_kfn_logId ; JSONString] ; 	
+					["layoutName" ; $destinationLayout ; JSONString] 
+				) 
+			] 
+			Set Variable [ $originalLayout ; Value: Get ( LayoutName ) ] 
+			Perform Script [ Specified: From list ; “[Insert]__Write-to-FM_UnifiedLog( param.json )” ; Parameter: $payload ]
+			Go to Layout [ $originalLayout ; Animation: None ]
+			# 
+		Else If [ not IsEmpty ( $jsonValue ) ] 
+			Set Field By Name [ $thisFieldPath ; $jsonValue ] 
+		End If
+		#  
+		Exit Loop If [ Let ( $innerCount = $innerCount + 1 ; $innerCount > $fieldCount ) ] 
+	End Loop
+	# 
+	If [ PatternCount ( Get ( LayoutTableName ) ; "_LEGS" ) 
+			or PatternCount ( Get ( LayoutTableName ) ; "_ATTACHMENTS" ) 
+			or PatternCount ( Get ( LayoutTableName ) ; "_RECIPIENTS" ) 
+		] 
+		Set Variable [ $thisFieldPath ; Value: $thisTable & "::_id" ] 
+		Set Variable [ $jsonValue ; Value: JSONGetElement ( $param.json ; "_id" ) ] 
+		Set Field By Name [ $thisFieldPath ; $jsonValue ] 
+		Set Variable [ $thisFieldPath ; Value: $thisTable & "::_kfn_log_id" ] 
+		Set Variable [ $jsonValue ; Value: JSONGetElement ( $param.json ; "_kfn_logId" ) ] 
+		Set Field By Name [ $thisFieldPath ; $jsonValue ] 
+	End If
+	# 
+	Exit Loop If [ Let ( $i = $i + 1 ; $i > $objectCount ) ] 
+	Set Variable [ $json ; Value: Replace ( $json ; 1 ; Position ( $json ; "¶" ; 1 ; 1 ) ; "" ) ] 
+End Loop
+Commit Records/Requests [ With dialog: Off ] 
+# 
+Set Variable [ $end ; Value: Get(CurrentTimeUTCMilliseconds) ] 
+// View As [ View as Table ]
+// Show Custom Dialog [ "Time taken to parse and generate " & Get ( FoundCount ) & " records and populate " & $fieldCount & " fields:¶" & $end-$start & " milliseconds." ] 

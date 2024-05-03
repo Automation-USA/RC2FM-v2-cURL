@@ -1,0 +1,35 @@
+# Name:
+[subscript]-[Ring-Out-Status]-Refresh-RingOut-CallStatus-()
+
+Created by: Julio Toledo - Automation USA LLC
+
+Purpose:
+Tests initiating a RingOut phone call
+
+Important Notes:
+-Requires FileMaker 16+ native JSON functions
+
+# call ring-out API endpoint with call id parameter to fetch call status
+Perform Script [ Specified: From list ; “[GET]__RingCentral-RingOut-CallStatus-( )” ; Parameter:    ]
+# 
+If [ IsEmpty (  $$rc.accessTokenExpiryTime ) or IsEmpty ( $$callStatus ) ] 
+	Install OnTimer Script [] 
+	Refresh Window [] 
+	Exit Script [ Text Result:    ] 
+End If
+# 
+# Parse API response
+If [ PatternCount ( $$rc.responseRingOutStatus ; "errorCode" ) or IsEmpty ( $$rc.accessTokenExpiryTime ) or PatternCount ( $callStatus ; "Syntax error" ) ] 
+	Set Variable [ $$rc.responseRingOut ; Value: "" ] 
+	Set Variable [ $$rc.responseRingOutStatus ; Value: "" ] 
+	Set Variable [ $$callStatus ; Value: "" ] 
+Else If [ JSONGetElement ( $$rc.responseRingOutStatus ; ".status.callerStatus" ) = "Finished" ] 
+	Refresh Window [] 
+	Pause/Resume Script [ Duration (seconds): 1 ] 
+	Set Variable [ $$rc.responseRingOut ; Value: "" ] 
+	Set Variable [ $$rc.responseRingOutStatus ; Value: "" ] 
+	Set Variable [ $$callStatus ; Value: "" ] 
+Else
+	Set Variable [ $$callStatus ; Value: JSONGetElement ( $$rc.responseRingOutStatus ; ".status.callStatus" ) ] 
+End If
+Refresh Window [] 

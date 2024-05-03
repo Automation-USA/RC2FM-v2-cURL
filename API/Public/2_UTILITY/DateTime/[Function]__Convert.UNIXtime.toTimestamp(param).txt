@@ -1,0 +1,81 @@
+# Name:
+[Function]__Convert.UNIXtime.toTimestamp( param )
+
+History:
+Created by: Julio Toledo - Automation USA LLC
+Created: 2020-01-11
+Last Modified: 2023-1111 - Julio Toledo
+Completed code QA
+
+Purpose:
+Implements Custom Function: "UnixTimeStamp2FMDate ( _TimeStamp )" as a script.
+--------------------------
+La Source multimédia
+12/2013
+
+Automation USA LLC
+03/31/2024 (added '_am_pm' variable '_hour' conversion to non-military time)
+
+UnixTimeStamp2FMDate ( _TimeStamp ) 
+
+Returns a FileMaker timestamp from a unix timestamp
+
+_TimeStamp: unix timestamp + UnixTimeStamp2FMHour ( _TimeStamp )
+
+Returns a FileMaker hour from a unix timestamp
+
+_TimeStamp: unix timestamp
+--------------------------
+
+# Test for script parameter
+If [ IsEmpty ( Get ( ScriptParameter ) ) ] 
+	Exit Script [ Text Result: JSONSetElement ( "{}" ; [ "errorCode" ; 958 ; JSONNumber ] ; [ "error_description" ; ErrorDescription ( 958 ) ; JSONString ] ; [ "error" ; True ; "" ] ) ] 
+End If
+Set Variable [ $unix_timestamp ; Value: Get ( ScriptParameter ) ] 
+# 
+Set Variable [ 
+	$fm_timestamp ; 
+	Value: Let([
+
+	//	_TimeStamp = "2013-10-04 12:13:15";
+		
+		_year = Left ( $unix_timestamp ; 4 );
+		_month = Middle ( $unix_timestamp ; 6 ; 2 );
+		_day = Middle ( $unix_timestamp ; 9 ; 2 );
+		_hour = Middle ( $unix_timestamp ; 12 ; 2 );
+		_min = Middle ( $unix_timestamp ; 15 ; 2 );
+		_sec = Middle ( $unix_timestamp ; 18 ; 2 ) ;
+		_am_pm = If ( _hour > 12 ; "PM" ; "AM" ) ;
+		_hour = If (_am_pm = "PM" ; _hour -12 ; _hour )
+	];
+		
+	Date ( _month ; _day ; _year ) & " " & Time ( _hour ; _min ; _sec ) & " " & _am_pm
+	)
+	
+	/* 
+	--------------------------
+	La Source multimédia
+	12/2013
+	
+	Automation USA LLC
+	03/31/2024 (added '_am_pm' variable '_hour' conversion to non-military time)
+	
+		UnixTimeStamp2FMDate ( _TimeStamp ) 
+	
+	Returns a FileMaker date from a unix timestamp
+	
+	_TimeStamp: unix timestamp
+	
+	+
+	
+		UnixTimeStamp2FMHour ( _TimeStamp )
+	
+	Returns a FileMaker hour from a unix timestamp
+	
+	_TimeStamp: unix timestamp
+	
+	--------------------------
+	*/
+] 
+# 
+Exit Script [ Text Result: $fm_timestamp ] 

@@ -1,0 +1,22 @@
+# Name:
+[Function]__RC2FM-RevokeHeaders.Clear()
+
+History:
+Created by: Julio Toledo - Automation USA LLC
+Created: 2020-01-11
+Last Modified: 2023-1111 - Julio Toledo
+Completed code QA
+
+Purpose:
+Clears FileMaker global variables for revoke token HTTP response headers
+
+Parameters:
+None
+
+Important Notes:
+
+Allow User Abort [ Off ]
+# 
+Set Variable [ $$rc.revoke.RefreshToken.Header ; Value: "" ] 
+Set Variable [ $$rc.revoke.AccessToken.Header ; Value: "" ] 
+# 

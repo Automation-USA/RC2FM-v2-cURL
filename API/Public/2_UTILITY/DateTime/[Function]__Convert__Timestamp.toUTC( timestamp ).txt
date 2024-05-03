@@ -1,0 +1,159 @@
+# Name:
+[Function]__Convert__Timestamp.toUTC( timestamp )
+
+History:
+Created by: Julio Toledo - Automation USA LLC
+Created: 2020-01-11
+Last Modified: 2023-1111 - Julio Toledo
+Completed code QA
+
+Purpose:
+Converts a FM timestamp from UTC time to local time
+
+Parameter:
+-FM timestamp (optional, defaults to current UTC time)
+
+Important Notes:
+-Requires FileMaker 16+ native JSON functions
+
+# 
+If [ IsEmpty ( Get ( ScriptParameter ) ) ] 
+	Set Variable [ $timestamp ; Value: GetAsTimestamp ( Floor ( Get ( CurrentTimeUTCMilliseconds ) / 1000 ) ) ] 
+Else
+	Set Variable [ $timeStamp ; Value: GetAsTimestamp ( Get ( ScriptParameter ) ) ] 
+	Perform Script [ Specified: From list ; “[Function]__Get__UTC.Offset( )” ; Parameter:    ]
+	Set Variable [ $offset ; Value: Get ( ScriptResult ) ] 
+	// Set Variable [ $timeOffset ; Value: Time ( (Floor ( $offset /3600 )) ; (Floor ( (Mod ( $offset ; 3600 ) / 60) )) ; (Floor ( Mod ( (Mod ( $offset ; 3600 )); 60 ) )) ) ] 
+	Set Variable [ $timeStamp ; Value: $timeStamp + $Offset ] 
+End If
+# 
+Set Variable [ 
+	$ISOFromDate ; 
+	Value: 
+	/*******************************************************************************
+	 * ISOFromDate ( theDate )
+	 *
+	 * @parameter theDate: The FileMaker date to coerce to ISO 8601 format
+	 *
+	 * @return theDate rendered in ISO 8601 format: YYYY-MM-DD
+	 *
+	 * @history 2011-09-22 - Jeremy Bante <http://scr.im/fugue> - Created
+	 * @history 2017-05-11 - Jeremy Bante <http://scr.im/fugue> - Adding error
+	 * result for non-date input
+	 *
+	 * @see http://en.wikipedia.org/wiki/ISO_8601
+	 ******************************************************************************/
+
+	Let ( [
+		_date =
+			If ( Year ( $timestamp ) = "?" ;
+				GetAsTimestamp ( $timestamp ) ;
+				/* Else */ $timestamp
+			) ;
+		_year = Year ( _date )
+	] ;
+		Case (
+			IsEmpty ( $timestamp ) ;
+				"" ;
+	
+			_year = "?" ;
+				"? Value is not a date¶  " & $timestamp ;
+	
+			/* Else */
+				Right ( "0000" & Year ( _date ) ; 4 )
+				& "-"
+				& Right ( "00" & Month ( _date ) ; 2 )
+				& "-"
+				& Right ( "00" & Day ( _date ) ; 2 )
+		)
+	)
+] 
+
+Set Variable [ 
+	$ISOfromTime ; 
+	Value: 
+	/*******************************************************************************
+	 * ISOFromTime ( theTime )
+	 *
+	 * @parameter theTime: The FileMaker time to convert to ISO 8601 format
+	 *
+	 * @return theTime rendered in ISO 8601 format: hh:mm:ss,sss (24-hour time)
+	 *
+	 * @history 2017-04-16 - Jeremy Bante <http://scr.im/fugue> - Created
+	 * @history 2017-05-11 - Jeremy Bante <http://scr.im/fugue> - Improving response
+	 * to error conditions.
+	 *
+	 * @see http://en.wikipedia.org/wiki/ISO_8601
+	 ******************************************************************************/
+	
+	Let ( [
+		_time =
+			If ( $timestamp ≥ Time ( 24 ; 0 ; 0 ) ;
+				GetAsTimestamp ( $timestamp ) ;
+				/* Else */ $timestamp
+			) ;
+		_seconds = Seconds ( _time ) ;
+		_integerSeconds = Div ( _seconds ; 1 ) ;
+		_fractionSeconds = Mod ( _seconds ; 1 )
+	] ;
+		Case (
+			IsEmpty ( $timestamp ) ;
+				"" ;
+	
+			_seconds = "?" ;
+				"? Value is not a time¶  " & $timestamp ;
+	
+			/* Else */
+				Right ( "00" & Hour ( _time ) ; 2 )
+				& ":" & Right ( "00" & Minute ( _time ) ; 2 )
+				& If ( _seconds > 0 ;
+					":" & Right ( "00" & _integerSeconds ; 2 )
+				)
+				& If ( _fractionSeconds > 0 ;
+					"," & Replace ( _fractionSeconds ; 1 ; 1 ; "" )
+				)
+		)
+	)
+] 
+
+Set Variable [ 
+	$toISO ; 
+	Value: 
+	/*******************************************************************************
+	 * ISOFromTimestamp ( theTimestamp )
+	 *
+	 * @parameter theTimestamp: The FileMaker timestamp to coerce to ISO 8601 format
+	 *
+	 * @return theTimestamp rendered in ISO 8601 format: YYYY-MM-DDThh:mm:ss,sss
+	 * (24-hour time)
+	 *
+	 * @uses ISOFromDate ( theDate )
+	 * @uses ISOFromTime ( theTime )
+	 *
+	 * @history 2011-05-17 - Jeremy Bante <http://scr.im/fugue> - Created
+	 * @history 2017-04-16 - Jeremy Bante <http://scr.im/fugue> - Refactoring to use
+	 * other functions for date & time components.
+	 * @history 2017-05-11 - Jeremy Bante <http://scr.im/fugue> - Improving error
+	 * results.
+	 *
+	 * @see http://en.wikipedia.org/wiki/ISO_8601
+	 ******************************************************************************/
+	
+	Let ( [
+		_date = $ISOFromDate ;
+		_time = $ISOFromTime ;
+		_notValid = Left ( _date ; 1 ) = "?" or Left ( _time ; 1 ) = "?"
+	] ;
+		Case (
+			IsEmpty ( $timestamp ) ;
+				"" ;
+	
+			_notValid ;
+				"? Value is not a timestamp¶  " & $timestamp ;
+	
+			/* Else */
+				_date & "T" & _time
+		)
+	)
+] 
+Exit Script [ Text Result: $toISO & "Z" ] 

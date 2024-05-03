@@ -1,0 +1,180 @@
+# Name:
+[GET]__RingCentral-MessageLog-(param.json)
+
+History:
+Created by: Julio Toledo - Automation USA LLC
+Created: 2020-01-11
+Last Modified: 2024-0331 - Julio Toledo
+Completed code QA
+
+Purpose:
+Returns a user's personal message log records (not company-wide), filtered by the specified (optional) query parameters.
+
+Parameters:
+JSON object containing any one (1) of the seven (7) implemented optional query parameters (even if the query value is null): 
+{
+	"dateFrom", 
+	"dateTo", 
+	"direction",
+	"messageType",
+	"readStatus",
+	"page"
+	"PerPage"
+}
+- Optional Query Parameter Definitions (all query parameters have defaults): 
+	-"dateFrom" (Starting time range for requested call records [in ISO 8601 format including timezone],
+	 for example 2016-03-10T18:07:52.534Z. Defaults to "dateTo" value minus 24 hours.)
+	-"dateTo" (End of time range for requested call records [in ISO 8601 format including timezone],
+	 for example 2016-03-10T18:07:52.534Z. Default value is current time).
+	-"direction" (direction of message records ["inbound" or "outbound"] to be included in the result. Defaults to both directions).
+	-"messageType" (type of message records ["SMS", "Fax", "VoiceMail", "Pager"] to be returned. Defaults to all all message types).
+	-"perPage" (Page size [number of records per page]. Message log responses are paginated. List defaults to 100 records/page).
+	-"page" (report page number requested. Only positive number values are allowed).
+ 
+	********* additional (unimplemented) query parameters *********
+	-"availability" (Specifies the availability status ["Alive", "Deleted", "Purged"] for resulting messages).
+	-"readStatus" (selects message records by status ["read" or "unread"] to be included in the result).
+	-"conversationId" (Specifies a conversation identifier for the requested messages).
+	-"distinctConversations" (JSONBoolean. If true, then the latest messages per every conversation ID are returned).
+	-"phoneNumber" (If specified, messages are returned for this particular phone number only).
+	***************************************************************
+
+- Example use:
+	JSONSetElement ( 
+	"{}" ; 
+		[ "dateFrom" ; "2024-03-10T18:07:52.534Z" ; JSONString ] ;
+		[ "dateTo" ; "2024-03-31T23:59:59.000Z" ; JSONString ];
+		[ "direction" ; "inbound" ; JSONString ] ;
+		[ "messageType" ; "SMS" ; JSONString ] ;
+		[ "perPage"; 1000  ; JSONNumber ] ;
+		[ "page" ; 1 ; JSONNumber ] 
+	)
+
+Global Variables:
+-Requires valid "$$rc.responseTokenOAuth" JSON object (from API session authentication)
+-Requires "$$rc.accessTokenExpiryTime" global variable 
+
+Reference:
+-https://developers.ringcentral.com/api-reference/Message-Store/listMessages
+-https://developers.ringcentral.com/guide/messaging/message-store/working-with-message-store
+
+Important Notes:
+-Requires FileMaker 16+ native JSON functions
+
+Set Variable [ $scriptName ; Value: "Script: " & Quote ( Get (ScriptName) ) ] 
+# 
+# Escape if parameter is not supplied
+If [ IsEmpty ( Get (ScriptParameter ) ) ] 
+	Perform Script [ Specified: From list ; “[Function]__Get__FM.ErrorDescription( errorCode )” ; Parameter: 958 ]
+	Set Variable [ $ErrorDescription ; Value: Get ( ScriptResult ) ] 
+	Exit Script [ Text Result: JSONSetElement ( "{}" ; [ "errorCode" ; 958 ; JSONNumber ] ; [ "error_description" ; $ErrorDescription & ¶ & ¶  & $scriptName ; JSONString ] ; [ "error" ; True ; "" ] ) ] 
+End If
+# 
+# validate parameter syntax
+If [ Left ( JSONFormatElements (  Get ( ScriptParameter ) ) ; 1 ) = "?" ] 
+	Perform Script [ Specified: From list ; “[Function]__Get__FM.ErrorDescription( errorCode )” ; Parameter: 1710 ]
+	Set Variable [ $ErrorDescription ; Value: Get ( ScriptResult ) ] 
+	Exit Script [ Text Result: JSONSetElement ( "{}" ; [ "errorCode" ; 1710 ; JSONNumber ] ; [ "error_description" ; "Malformed JSON or " & $ErrorDescription & ¶ & ¶ & $scriptName ; JSONString ] ; [ "error" ; True ; "" ] ) ] 
+End If
+# 
+# store script parameter
+Set Variable [ $param.json ; Value: Get ( ScriptParameter ) ] 
+# 
+# parse JSON
+Set Variable [ $dateFrom ; Value: JSONGetElement ( $param.json ; "dateFrom" ) ] 
+Set Variable [ $dateTo ; Value: JSONGetElement ( $param.json ; "dateTo" ) ] 
+Set Variable [ $direction ; Value: JSONGetElement ( $param.json ; "direction" ) ] 
+Set Variable [ $messageType ; Value: JSONGetElement ( $param.json ; "messageType" ) ] 
+Set Variable [ $perPage ; Value: JSONGetElement ( $param.json ; "perPage" ) ] 
+Set Variable [ $page ; Value: JSONGetElement ( $param.json ; "page" ) ] 
+# 
+# Validate parameters
+If [ not IsEmpty ( $dateFrom ) ] 
+	Perform Script [ Specified: From list ; “[Function]__Convert__UNIXtime.toTimestamp( param )” ; Parameter: $dateFrom ]
+	Set Variable [ $dateFromAsTimeStamp ; Value: Get ( ScriptResult ) ] 
+	If [ Left ( $dateFromAsTimeStamp ; 1 ) = "?" ] 
+		Perform Script [ Specified: From list ; “[Function]__Get__FM.ErrorDescription( errorCode )” ; Parameter: 500 ]
+		Set Variable [ $ErrorDescription ; Value: Get ( ScriptResult ) ] 
+		Exit Script [ Text Result: JSONSetElement ( "{}" ; [ "errorCode" ; 500 ; JSONNumber ] ; [ "error_description" ; "Malformed \"dateFrom\" parameter. " & $ErrorDescription & ¶ & ¶  & $scriptName ; JSONString ] ; [ "error" ; True ; "" ] ) ] 
+	Else If [ $dateFromAsTimeStamp  ≥ ( Get ( CurrentHostTimestamp ) - 5 ) ] 
+		Perform Script [ Specified: From list ; “[Function]__Get__FM.ErrorDescription( errorCode )” ; Parameter: 500 ]
+		Set Variable [ $ErrorDescription ; Value: Get ( ScriptResult ) ] 
+		Exit Script [ Text Result: JSONSetElement ( "{}" ; [ "errorCode" ; 500 ; JSONNumber ] ; [ "error_description" ; "\"dateFrom\" parameter must be less than 5 seconds ago. " & $ErrorDescription & ¶ & ¶  & $scriptName ; JSONString ] ; [ "error" ; True ; "" ] ) ] 
+	End If
+End If
+If [ not IsEmpty ( $dateTo ) ] 
+	Perform Script [ Specified: From list ; “[Function]__Convert__UNIXtime.toTimestamp( param )” ; Parameter: $dateTo ]
+	Set Variable [ $dateToAsTimeStamp ; Value: Get ( ScriptResult ) ] 
+	If [ Left ( $dateToAsTimeStamp ; 1 ) = "?" ] 
+		Perform Script [ Specified: From list ; “[Function]__Get__FM.ErrorDescription( errorCode )” ; Parameter: 500 ]
+		Set Variable [ $ErrorDescription ; Value: Get ( ScriptResult ) ] 
+		Exit Script [ Text Result: JSONSetElement ( "{}" ; [ "errorCode" ; 500 ; JSONNumber ] ; [ "error_description" ; "Malformed \"dateTo\" parameter. " & $ErrorDescription & ¶ & ¶  & $scriptName ; JSONString ] ; [ "error" ; True ; "" ] ) ] 
+	Else If [ $dateToAsTimeStamp  ≥ Get ( CurrentHostTimestamp ) ] 
+		Perform Script [ Specified: From list ; “[Function]__Get__FM.ErrorDescription( errorCode )” ; Parameter: 500 ]
+		Set Variable [ $ErrorDescription ; Value: Get ( ScriptResult ) ] 
+		Exit Script [ Text Result: JSONSetElement ( "{}" ; [ "errorCode" ; 500 ; JSONNumber ] ; [ "error_description" ; "\"dateTo\" parameter must be less than current time. " & $ErrorDescription & ¶ & ¶  & $scriptName ; JSONString ] ; [ "error" ; True ; "" ] ) ] 
+	End If
+End If
+If [ Let ( 	perPage = Filter ( $perPage ; "0123456789" ) ; 	//calculation 	If ( IsEmpty ( perPage ) or GetAsNumber ( perPage ) < 1 ; 1 ; perPage )  ) ] 
+End If
+# 
+# query parameters validation
+Set Variable [ $queryParams ; Value: 
+	//override invalid query params by either omitting params with null values or by replacing invalid values with predefined values
+	"?" &
+	
+	//'direction' param override (substitute negative value with request for page 1) 
+	If ( not IsEmpty ( $direction ) ;  "&direction=" & $direction ; "" ) &
+	
+	//'page' param override (substitute negative value with request for page 1) 
+	"&page=" & If ( IsEmpty ( $pageNum ) or GetAsNumber ( $perPage ) < 1 ; 1 ; $pageNum ) & 
+	
+	//'perPage' param override (substitute null or negative values with request for 1000 records per page)
+	"&perPage=" & If ( IsEmpty ( $perPage ) or GetAsNumber ( $perPage ) < 1 ; "1000" ; $perPage ) &
+	
+	//'dateFrom' param override (omit param)
+	If ( not IsEmpty ( $dateFrom ) ;  "&dateFrom=" & $dateFrom ; "" ) &
+	
+	//'dateTo' param override (omit param)
+	If ( not IsEmpty ( $dateTo ) ;  "&dateTo=" & $dateTo ; "" ) &
+	 
+	//'messageType' override (omit null param, otherwise susbsitute invalid value with request for 'All' record types) 
+	If (not IsEmpty ( $messageType) ;  
+		Let ( 
+		[ 
+			recordingType = LeftValues ( $recordingType ; 1 ) ;
+			validTypes = List ( "SMS" ; "Fax" ; "VoiceMail"; "Pager" )
+		] ;
+	
+			//calculation
+			If ( 
+				ValueCount ( FilterValues ( recordingType ; validTypes ) ) = 1;
+	 
+				"&messageType=" & Upper ( Left ( $recordingType ; 1 ) ) & Lower ( Right ( $recordingType ; Length ( $recordingType )-1 ) );
+				""
+			)
+		) ;
+	//else
+	""
+	)
+] 
+# 
+# validate API token
+Set Variable [ $tokenTimeLeft ; Value: GetAsNumber ( Get ( CurrentHostTimestamp ) - GetAsTimestamp ( $$rc.accessTokenExpiryTime ) ) ] 
+If [ $tokenTimeLeft > -60 ] 
+	Perform Script [ Specified: From list ; “[POST]__RingCentral-Refresh-Token-[Prolong-Session]-( )” ; Parameter:    ]
+End If
+Set Variable [ $token ; Value: JSONGetElement ( $$rc.responseTokenOAuth ; ".access_token" ) ] 
+# 
+# concatenate endpoint URL
+Set Variable [ $url ; Value: $$rc.baseURL & $$rc.endpointMessageLog & $queryParams ] 
+# 
+# Concatenate entire cURL command
+Set Variable [ $cURL ; Value: " -X GET --header \"Accept: application/json\" --header \"Authorization: Bearer " & $token & "\" --header \"User-Agent: " & $$rc.userAgent & "\" --dump-header \"$$rc.responseMessageLogHeader\" --show-error" ] 
+# 
+# clear message-log global var
+Set Variable [ $$rc.responseMessageLogHeader ; Value: "" ] 
+# 
+# [HTTP-GET]
+Insert from URL [ Select ; With dialog: Off ; Target: $$rc.responseMessageLog ; $url ; Verify SSL Certificates ; cURL options: $cURL ] 
+# 

@@ -1,0 +1,150 @@
+# Name:
+[Function]__Get__FM.Version.Major(string)
+
+History:
+Created by: Julio Toledo - Automation USA LLC
+Created: 2020-01-11
+Last Modified: 2023-1111 - Julio Toledo
+Completed code QA
+
+Purpose:
+Implements Custom Function: "GetMajorVersion" as a script.
+
+/*
+ * ===============
+ * GetMajorVersion
+ * 
+ * PARAMETERS:
+ *		$string, defaults to "Get ( ApplicationVersion )" function.
+ *
+ *
+ * RETURNS:
+ *		Returns Major application version number (as string) by:
+ *		a) filtering out all non-numeric characters from version string,
+ *		b) casting version float to an integer, and
+ *		c) normalizing various non-normal methods of semantic versioning ( https://semver.org ), 
+ *		   including use of non-standard separators such as underscore "_", hyphen "-", and comma ","
+ *
+ *		Examples: 
+ *
+ *		GetMajorVersion ( "" ) returns "17" when Get ( ApplicationVersion ) = "ProAdvanced 17.0.3"
+ *
+ *		GetMajorVersion ( Get ( HostApplicationVersion )  ) returns "16" when Get ( HostApplicationVersion ) = "Server 16.0.4"
+ *
+ *		GetMajorVersion ( $$MODULE.VERSION ) returns "1" when $$MODULE.VERSION = "Version 1.0.1"
+ *
+ *		GetMajorVersion ( Get ( WindowName ) ) returns "1" when window name = "My_App_1_0_3"
+ *
+ *		GetMajorVersion ( GetSystemPlatformVersion ) returns "10" when GetSystemPlatformVersion = "macOS 10.14.2"
+ *
+ *		GetMajorVersion ( Get ( FileName ) ) returns "0" when  Get ( FileName )  = "My_App_0-0-3-5"
+ *
+ *		GetMajorVersion ( Get ( FileName ) ) returns "2" when  Get ( FileName )  = "My-App-2,1,3,5"
+ *
+ *		Returns "N/A" as default
+ *
+ * DEPENDENCIES:
+ * 		None
+ *
+ *
+ * KNOWN ISSUES:
+ * 		None
+ *
+ * NOTES:
+ * 		None
+ *
+ * RELEASE:
+ * 		2019-01-06 - Initial release by Julio Toledo, Automation USA LLC ( www.automationusa.net )
+ * 		2019-01-07 - Modified by Julio Toledo, Automation USA LLC ( www.automationusa.net )
+ * 			     Replaced “Int ( )” function with nested “Left ( Position ( ) )” functions to address files created with locales that use coma as the decimal separator
+ *
+ * ===============
+ * 
+ */
+
+Allow User Abort [ Off ]
+# 
+Set Variable [ $string ; Value: Get ( ScriptParameter ) ] 
+Exit Script [ Text Result: /*
+	 * ===============
+	 * GetMajorVersion
+	 * 
+	 * PARAMETERS:
+	 *		string, defaults to "Get ( ApplicationVersion )" function.
+	 *
+	 *
+	 * RETURNS:
+	 *		Returns Major application version number (as string) by:
+	 *		a) filtering out all non-numeric characters from version string,
+	 *		b) casting version float to an integer, and
+	 *		c) normalizing various non-normal methods of semantic versioning ( https://semver.org ), 
+	 *		   including use of non-standard separators such as underscore "_", hyphen "-", and comma ","
+	 *
+	 *		Examples: 
+	 *
+	 *		GetMajorVersion ( "" ) returns "17" when Get ( ApplicationVersion ) = "ProAdvanced 17.0.3"
+	 *
+	 *		GetMajorVersion ( Get ( HostApplicationVersion )  ) returns "16" when Get ( HostApplicationVersion ) = "Server 16.0.4"
+	 *
+	 *		GetMajorVersion ( $$MODULE.VERSION ) returns "1" when $$MODULE.VERSION = "Version 1.0.1"
+	 *
+	 *		GetMajorVersion ( Get ( WindowName ) ) returns "1" when window name = "My_App_1_0_3"
+	 *
+	 *		GetMajorVersion ( GetSystemPlatformVersion ) returns "10" when GetSystemPlatformVersion = "macOS 10.14.2"
+	 *
+	 *		GetMajorVersion ( Get ( FileName ) ) returns "0" when  Get ( FileName )  = "My_App_0-0-3-5"
+	 *
+	 *		GetMajorVersion ( Get ( FileName ) ) returns "2" when  Get ( FileName )  = "My-App-2,1,3,5"
+	 *
+	 *		Returns "N/A" as default
+	 *
+	 * DEPENDENCIES:
+	 * 		None
+	 *
+	 *
+	 * KNOWN ISSUES:
+	 * 		None
+	 *
+	 * NOTES:
+	 * 		None
+	 *
+	 * RELEASE:
+	 * 		2019-01-06 - Initial release by Julio Toledo, Automation USA LLC ( www.automationusa.net )
+	 * 		2019-01-07 - Modified by Julio Toledo, Automation USA LLC ( www.automationusa.net )
+	 * 		Replaced “Int ( )” function with nested “Left ( Position ( ) )” functions to address files created with locales that use coma as the decimal separator
+	 *
+	 * ===============
+	 * 
+	 */
+	
+	Let ( 
+	
+		[
+	
+		string = If ( IsEmpty ( $string ) ; Get ( ApplicationVersion ) ; $string ) ;
+	
+		myfilter = "-.0123456789_," ;
+	
+		digits = Filter ( string ; myfilter ) ; 
+	
+		version = Substitute ( digits ; [ "__" ; "_" ] ; [ "_" ; "." ] ; [ "-" ; "."] ; [ "—" ; "-"]  ; [ ",," ; "," ] ; [ "," ; "." ] ; [ ".." ; "" ] ) ;
+	
+		version = If ( 
+					not GetAsNumber ( Left ( version ; 1 ) ) ;
+	
+					Middle ( version ; 2 ; Length ( version ) ) ;
+	
+					version
+				) ;
+	
+		firstPeriod = Position ( version ; "." ; 1 ; 1 ) -1 ;
+	
+		major =  Left ( version ; firstPeriod )
+	
+		] ; 
+	
+		//calculation 
+			If ( IsEmpty ( major ) ; "N/A" ; major )
+	
+	)
+] 

@@ -1,0 +1,80 @@
+# Name:
+[POST]__RingCentral-Revoke-Tokens-[End-Session]-()
+
+History:
+Created by: Julio Toledo - Automation USA LLC
+Created: 2020-01-11
+Last Modified: 2023-1111 - Julio Toledo
+Completed code QA
+
+Purpose:
+Revokes both access token and refresh token
+
+Parameters: None
+
+Global Variables:
+-Requires valid "$$rc.responseTokenOAuth" JSON object (from API session authentication)
+
+Reference: 
+https://developers.ringcentral.com/api-reference/Revoke-Token
+
+Important Notes:
+-Requires FileMaker 16+ native JSON functions
+
+Set Variable [ $$rc.responseTokenOAuth.Revoke ; Value: "" ] 
+# 
+# Fetch API app credentials
+Perform Script [ Specified: From list ; “[Function]__Init__RingCentral.API.Environment( )” ; Parameter:    ]
+Set Variable [ $BasicAuth ; Value: Get ( ScriptResult ) ] 
+# 
+# #####-revoke refresh token-#####
+Set Variable [ $token ; Value: JSONGetElement ( $$rc.responseTokenOAuth ; ".refresh_token" ) ] 
+# 
+# concatenate endpoint
+Set Variable [ $url ; Value: $$rc.baseURL & $$rc.endpointTokenRevoke ] 
+# 
+# Concatenate entire cURL command
+Set Variable [ $cURL ; Value: Let ( [ cURL = 
+	"-X POST
+	--header \"Content-Type: application/x-www-form-urlencoded\"
+	--header \"Authorization: Basic " & $BasicAuth & "\"" & "
+	--dump-header \"$$rc.revoke.RefreshToken.Header\"
+	-d \"token=" & $token & "\""	
+	] ; 
+	
+	Substitute ( cURL ; [Char ( "10" ); ""];[Char ( "13" ); ""]; [Char ( "¶" ); ""]) 
+	
+	)
+] 
+# 
+# [HTTP-POST]
+Insert from URL [ Select ; With dialog: Off ; Target: $$rc.responseTokenOAuth.Revoke ; $url ; Verify SSL Certificates ; cURL options: $cURL ] 
+# ################################
+# 
+# 
+# #####-revoke access token-#####
+Set Variable [ $token ; Value: JSONGetElement ( $$rc.responseTokenOAuth ; ".access_token" ) ] 
+# 
+# Concatenate entire cURL command
+Set Variable [ $cURL ; Value: Let ( [ cURL = 	
+	"-X POST
+	--header \"Content-Type: application/x-www-form-urlencoded\"
+	--header \"Authorization: Basic " & $BasicAuth & "\"" & "
+	--dump-header \"$$rc.revoke.AccessToken.Header\"
+	-d \"token=" & $token & "\""	
+	] ; 
+	
+	Substitute ( cURL ; [Char ( "10" ); ""];[Char ( "13" ); ""]; [Char ( "¶" ); ""]) 
+	
+	)
+] 
+# 
+# [HTTP-POST]
+Insert from URL [ Select ; With dialog: Off ; Target: $$rc.responseTokenOAuth.Revoke ; $url ; Verify SSL Certificates ; cURL options: $cURL ] 
+# ################################
+# 
+# Parse both response headers
+If [ PatternCount ( GetValue ( $$rc.revoke.AccessToken.Header ; 1 ) ; "HTTP/1.1 200" ) and PatternCount ( GetValue ( $$rc.revoke.RefreshToken.Header ; 1 ) ; "HTTP/1.1 200" ) ] 
+	Perform Script [ Specified: From list ; “[Function]__RC2FM-GlobalVars.Clear( )” ; Parameter:    ]
+End If
+# 

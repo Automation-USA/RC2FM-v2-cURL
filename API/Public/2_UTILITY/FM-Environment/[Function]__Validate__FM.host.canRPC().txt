@@ -1,0 +1,145 @@
+# Name:
+[Function]__Validate__FM.host.canRPC()
+
+History:
+Created by: Julio Toledo - Automation USA LLC
+Created: 2020-01-11
+Last Modified: 2023-1111 - Julio Toledo
+Completed code QA
+
+Purpose:
+Implements Custom Function: "hostCanRPC" as a script.
+
+Important Notes:
+-Requires script "[Function]__Get__FM.Version.Major(string)"
+-Requires script "[Function]__Get__FM.Version.Minor(string)"
+
+------------------
+/*
+ * 
+ * hostCanRPC
+ * 
+ * PARAMETERS:
+ *	None
+ *
+ * RETURNS:
+ *	Returns boolean as defined by Claris FileMaker ( '1' for true or '0' for false ): 
+ * 	- True signifies file is hosted and host version supports Remote Procedure Calls (i.e. 'Perform Script On Server')
+ * 	- False signifies file is either local or host version **does not** support Remote Procedure Calls (i.e. 'Perform Script On Server')
+ *
+ * 	Examples: 
+ *
+ *		hostCanRPC returns false when Get ( ConnectionState ) evaluates to 0 (file is local)
+ *		hostCanRPC returns false when file is hosted but host name is not "Server" or "Cloud"
+ *		hostCanRPC returns true when Get ( HostApplicationVersion ) evaluates to "Cloud"
+ *		hostCanRPC returns true when Get ( HostApplicationVersion ) evaluates to "Server 13.0.2" (or greater)
+ *		hostCanRPC returns false when Get ( HostApplicationVersion ) ≤ "Server 13.0.1"
+ *    (earliest reliable implementation of 'PerformScriptOnServer' begins with FileMaker Server version 13.0.2)
+ *
+ * KNOWN ISSUES:
+ * 	None
+ *
+ * NOTES:
+ * 	None
+ *
+ * RELEASE:
+ * 	2019-08-25 - Initial release by Julio Toledo, Automation USA LLC ( www.automationusa.net )
+ * 
+*/
+------------------
+
+Allow User Abort [ Off ]
+# 
+If [ Get ( ConnectionState ) = 0 ] 
+	Exit Script [ Text Result: False ] 
+Else
+	Set Variable [ $host ; Value: Get ( HostApplicationVersion ) ] 
+	# 
+	Perform Script [ Specified: From list ; “[Function]__Get__FM.Version.Major( string )” ; Parameter: $host ]
+	Set Variable [ $major ; Value: Get ( ScriptResult ) ] 
+	# 
+	Perform Script [ Specified: From list ; “[Function]__Get__FM.Version.Minor( string )” ; Parameter: $host ]
+	Set Variable [ $minor ; Value: Get ( ScriptResult ) ] 
+	# 
+	Exit Script [ Text Result: 
+	/*
+	 * 
+	 * hostCanRPC
+	 * 
+	 * PARAMETERS:
+	 *	None
+	 *
+	 *
+	 * RETURNS:
+	 *	Returns boolean as defined by Claris FileMaker ( '1' for true or '0' for false ): 
+	 * 	- True signifies file is hosted and host version supports Remote Procedure Calls (i.e. 'Perform Script On Server')
+	 * 	- False signifies file is either local or host version **does not** support Remote Procedure Calls (i.e. 'Perform Script On Server')
+	 *
+	 * 	Examples: 
+	 *
+	 *		hostCanRPC returns false when Get ( ConnectionState ) evaluates to 0 (file is local)
+	 *		hostCanRPC returns false when file is hosted but host name is not "Server" or "Cloud"
+	 *		hostCanRPC returns true when Get ( HostApplicationVersion ) evaluates to "Cloud"
+	 *		hostCanRPC returns true when Get ( HostApplicationVersion ) evaluates to "Server 13.0.2" (or greater)
+	 *		hostCanRPC returns false when Get ( HostApplicationVersion ) ≤ "Server 13.0.1"  (earliest reliable implementation of 'PerformScriptOnServer' in FileMaker Server begins with version 13.0.2)
+	 *
+	 * KNOWN ISSUES:
+	 * 	None
+	 *
+	 * NOTES:
+	 * 	None
+	 *
+	 * RELEASE:
+	 * 	2019-08-25 - Initial release by Julio Toledo, Automation USA LLC ( www.automationusa.net )
+	 * 
+	*/
+	
+	Case ( 
+	
+		Get ( ConnectionState ) = 0 ; False ; 
+	
+		Get ( ConnectionState ) > 0 ; 
+	
+			Let ( 
+	
+				[
+	
+					host = $host ; 
+					major = $major ;
+					minor = $minor ;
+					absMinor = Abs ( Filter ( minor ; "0123456789" ) ) ;
+	
+					result = Case ( 
+	
+						PatternCount ( host ; "Cloud" ) ; True ; 
+	
+						PatternCount ( host ; "Server" ) ; 
+	
+							Case ( 
+	
+								major = 13 and absMinor > 1 ; True ;
+	
+								major > 13 ; True ;
+	
+								//defaultResult
+								False
+	
+							); 
+							//end inner Case
+	
+						//defaultResult
+						False 
+	
+					) 
+					//end outer Case
+	
+				];
+	
+				//calculation
+				result
+			)
+	
+	)
+] 
+End If
+# 

@@ -1,0 +1,117 @@
+# Name:
+[GET]__RingCentral-Call-Recording-Content-(param.json)
+
+History:
+Created by: Julio Toledo - Automation USA LLC
+Created: 2020-01-11
+Last Modified: 2024-0331 - Julio Toledo
+Completed code QA
+
+Purpose:
+Returns a user's particular call recording audio file [as specified the by requested recording ID].)
+
+Parameter:
+JSON object with the following value: 
+{
+	"recordingID",
+	"desitnation_path"
+}
+- Parameter Definition: 
+	-"recordingID" (Internal identifier of a call recording [as returned from a Call Log report].)
+	-"destination_path" (internal database record path to a FileMaker container field where the binary will be stored.)
+
+- Example use:
+	JSONSetElement ( 
+	"{}" ; 
+	[ "recordingID" ; 877533160012 ; JSONNumber ] ;
+	[ "destination_path" ; RC2FMv2_ATTACHMENTS::attachment ; JSONString ]
+	)
+
+Global Variables:
+-Requires valid "$$rc.responseTokenOAuth" JSON object (from API session authentication)
+-Requires "$$rc.accessTokenExpiryTime" global variable 
+
+Reference:
+-https://developers.ringcentral.com/api-reference/Call-Recordings/readCallRecordingContent
+-https://developers.ringcentral.com/guide/voice/call-log/recordings
+
+Important Notes:
+-Requires FileMaker 16+ native JSON functions
+-Requires access to the FM table [as specified in the "destination_path" parameter]. 
+ Unlike other API requests, this script inserts response (binary) data directly into an FM container field rather than into a global variable.
+ Therefore, the user session [or PSoS session] under which this script is executed will require access to that internal database path.
+
+Set Variable [ $scriptName ; Value: "Script: " & Quote ( Get (ScriptName) ) ] 
+# 
+# Escape if parameter is not supplied
+If [ IsEmpty ( Get (ScriptParameter ) ) ] 
+	Perform Script [ Specified: From list ; “[Function]__Get__FM.ErrorDescription( errorCode )” ; Parameter: 958 ]
+	Set Variable [ $ErrorDescription ; Value: Get ( ScriptResult ) ] 
+	Exit Script [ Text Result: JSONSetElement ( "{}" ; [ "errorCode" ; 958 ; JSONNumber ] ; [ "error_description" ; $ErrorDescription & ¶ & ¶  & $scriptName ; JSONString ] ; [ "error" ; True ; "" ] ) ] 
+End If
+# 
+# validate parameter syntax
+If [ Left ( JSONFormatElements (  Get ( ScriptParameter ) ) ; 1 ) = "?" ] 
+	Perform Script [ Specified: From list ; “[Function]__Get__FM.ErrorDescription( errorCode )” ; Parameter: 1710 ]
+	Set Variable [ $ErrorDescription ; Value: Get ( ScriptResult ) ] 
+	Exit Script [ Text Result: JSONSetElement ( "{}" ; [ "errorCode" ; 1710 ; JSONNumber ] ; [ "error_description" ; "Malformed JSON or " & $ErrorDescription & ¶ & ¶ & $scriptName ; JSONString ] ; [ "error" ; True ; "" ] ) ] 
+End If
+# 
+# store script parameter
+Set Variable [ $param.json ; Value: Get ( ScriptParameter ) ] 
+# 
+# parse JSON
+Set Variable [ $recordingID ; Value: JSONGetElement ( $param.json ; "recordingID" ) ] 
+Set Variable [ $containerFieldPath ; Value: JSONGetElement ( $param.json ; "destination_path" ) ] 
+# 
+# Validate required parameters
+# validate $recordingID
+If [ IsEmpty ( $recordingID ) ] 
+	Perform Script [ Specified: From list ; “[Function]__Get__FM.ErrorDescription( errorCode )” ; Parameter: 1707 ]
+	Set Variable [ $ErrorDescription ; Value: Get ( ScriptResult ) ] 
+	Exit Script [ Text Result: JSONSetElement ( "{}" ; [ "errorCode" ; 1707 ; JSONNumber ] ; [ "error_description" ; $ErrorDescription & ¶ & ¶ & $scriptName ; JSONString ] ; [ "error" ; True ; "" ] ) ] 
+End If
+# validate $containerFieldPath
+If [ not IsValid ( $containerFieldPath ) ] 
+	Perform Script [ Specified: From list ; “[Function]__Get__FM.ErrorDescription( errorCode )” ; Parameter: 1209 ]
+	Set Variable [ $ErrorDescription ; Value: Get ( ScriptResult ) ] 
+	Exit Script [ Text Result: JSONSetElement ( "{}" ; [ "errorCode" ; 1209 ; JSONNumber ] ; [ "error_description" ; $ErrorDescription & ¶ & ¶ & $scriptName ; JSONString ] ; [ "error" ; True ; "" ] ) ] 
+End If
+# 
+# validate API token
+Set Variable [ $tokenTimeLeft ; Value: GetAsNumber ( Get ( CurrentHostTimestamp ) - GetAsTimestamp ( $$rc.accessTokenExpiryTime ) ) ] 
+If [ $tokenTimeLeft > -60 ] 
+	Perform Script [ Specified: From list ; “[POST]__RingCentral-Refresh-Token-[Prolong-Session]-( )” ; Parameter:    ]
+End If
+Set Variable [ $token ; Value: JSONGetElement ( $$rc.responseTokenOAuth ; ".access_token" ) ] 
+# 
+# concatenate endpoint URL
+Set Variable [ $url ; Value: $$rc.mediaURL & $$rc.endpointCallRecording & $recordingID & "/content" & 
+"?contentDisposition=Attachment&contentDispositionFilename=recording" & $recordingID & ".mp3"
+
+//note: binary media store (prod) uri is 'https://media.ringcentral.com/'
+] 
+# 
+# Concatenate entire cURL command
+Set Variable [ $cURL ; Value: " -X GET
+	--header \"Accept: audio/mpeg\" 
+	--header \"Authorization: Bearer " & $token & "\" 
+	--header \"User-Agent: " & $$rc.userAgent & "\"
+	--dump-header \"$$callRecordingHeader\"
+	--FM-return-container-variable" //<-- forces returned data to be stored as container data
+] 
+# 
+# clear call-log global var
+Set Variable [ $$callRecordingHeader ; Value: "" ] 
+Set Variable [ $callRecordingBinary ; Value: "" ] 
+# 
+# [HTTP-GET]
+Set Error Capture [ On ]
+Insert from URL [ Select ; With dialog: Off ; Target: $callRecordingBinary ; $url ; Verify SSL Certificates ; cURL options: $cURL ] 
+Set Variable [ $curlError ; Value: Get(LastErrorDetail)  & ¶ & Get ( LastError ) ] 
+# 
+# Insert binary file into an FM container field
+If [ GetValue ( $curlError ; 2 ) = "0" ] 
+	Set Field By Name [ $containerFieldPath ; $callRecordingBinary ] 
+End If
+# 

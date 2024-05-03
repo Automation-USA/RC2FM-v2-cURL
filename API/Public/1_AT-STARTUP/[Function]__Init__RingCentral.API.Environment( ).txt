@@ -1,0 +1,72 @@
+# [Function]__Init__RingCentral.API.Environment( )
+
+# Name:
+[Function]__Init__RingCentral.API.Environment()
+
+History:
+Created by: Julio Toledo - Automation USA LLC
+Created: 2020-01-11
+Last Modified: 2023-1111 - Julio Toledo
+Completed code QA
+
+Purpose:
+Initializes base-URL, user agent, app Key, and app Secret, and endpoint variables for RingCentral Prod/Sandbox API environments
+
+Parameters:
+None
+
+Important Notes:
+-Requires Base64EncodeRFC function (FileMaker 17+)
+-Requires script "[Function]__Get_System.Platform.Version()"
+-**Call this script upon startup [OnFirstWindowOpen]**
+
+Allow User Abort [ Off ]
+Set Variable [ $$rc.applicationMode ; Value: "Production" //"Sandbox" //"Production" ] 
+# 
+# Specify your onw RingCentral App Keys and App Secrets here:
+If [ $$rc.applicationMode = "Sandbox" ] 
+	Set Variable [ $$rc.baseURL ; Value: "https://platform.devtest.ringcentral.com/restapi" ] 
+	Set Variable [ $$rc.mediaURL ; Value: "https://media.devtest.ringcentral.com/restapi" ] 
+	# JWT Sandbox
+	Set Variable [ $appKey ; Value: "*Your*Sandbox*App*Key*here" ] 
+	Set Variable [ $appSecret ; Value: "*Your*Sandbox*App*Secret*here" ] 
+	Set Variable [ $$jwt ; Value: "**Your*Sandbox*(very-long)JWT*token*here**"
+ //(obtained by visiting https://developers.ringcentral.com/console/my-credentials/create?client_id=<YOUR RINGCENTRAL API-APP ID [AKA CLIENT ID]>) ] 
+	# 
+Else If [ $$rc.applicationMode = "Production" ] 
+	Set Variable [ $$rc.baseURL ; Value: "https://platform.ringcentral.com/restapi" ] 
+	Set Variable [ $$rc.mediaURL ; Value: "https://media.ringcentral.com/restapi" ] 
+	# JWT Production
+	Set Variable [ $appKey ; Value: "*Your*Production*App*Key*here" ] 
+	Set Variable [ $appSecret ; Value: "*Your*Production*App*Secret*here" ] 
+	Set Variable [ $$jwt ; Value: "**Your*Production*(very-long)JWT*token*here**"
+ //(obtained by visiting https://developers.ringcentral.com/console/my-credentials/create?client_id=<YOUR RINGCENTRAL API-APP ID [AKA CLIENT ID]>) ] 
+End If
+# 
+# Define session variables
+Set Variable [ $$rc.tokenTTL ; Value: 2700 //number of seconds before session token expires //Maximum is 3600 sec (1 hour). //The default value is also 3600 sec ] 
+# 
+# Define all relevant API endpoints
+Set Variable [ $$rc.endpointToken ; Value: "/oauth/token" ] 
+Set Variable [ $$rc.endpointTokenRevoke ; Value: "/oauth/revoke" ] 
+Set Variable [ $$rc.endpointAccount ; Value: "/v1.0/account/~" ] 
+Set Variable [ $$rc.endpointAccountPermissions ; Value: "/v1.0/account/~/extension/~/authz-profile" ] 
+Set Variable [ $$rc.endpointAccountPhoneNumbers ; Value: "/v1.0/account/~/phone-number" ] 
+Set Variable [ $$rc.endpointUserPhoneNumbers ; Value: "/v1.0/account/~/extension/~/phone-number" ] 
+Set Variable [ $$rc.endpointRingOut ; Value: "/v1.0/account/~/extension/~/ring-out" ] 
+Set Variable [ $$rc.endpointSMS ; Value: "/v1.0/account/~/extension/~/sms" ] 
+Set Variable [ $$rc.endpointMMS ; Value: "/v1.0/account/~/extension/~/mms" ] 
+Set Variable [ $$rc.endpointFaxOut ; Value: "/v1.0/account/~/extension/~/fax" ] 
+Set Variable [ $$rc.endpointCallLog ; Value: "/v1.0/account/~/extension/~/call-log" ] 
+Set Variable [ $$rc.endpointCallRecording ; Value: "/v1.0/account/~/recording/" ] 
+Set Variable [ $$rc.endpointMessageLog ; Value: "/v1.0/account/~/extension/~/message-store" ] 
+Set Variable [ $$rc.endpointNumberParser ; Value: "/v1.0/number-parser/parse" ] 
+# 
+# Define User Agent
+Perform Script [ Specified: From list ; “[Function]__Get_System.Platform.Version( )” ; Parameter:    ]
+Set Variable [ $SystemVersion ; Value: Get ( ScriptResult ) ] 
+Perform Script [ Specified: From list ; “[Function]__Get_Device.Type( )” ; Parameter:    ]
+Set Variable [ $DeviceType ; Value: Get ( ScriptResult ) ] 
+Set Variable [ $$rc.userAgent ; Value: "RC2FM/2.0 (Claris; FileMaker" & LeftWords ( Get (ApplicationVersion) ; 1 ) &  "/" & RightWords ( Get (ApplicationVersion) ; 1 ) & "; " & If ( not IsEmpty ( $DeviceType ) ; $DeviceType &  "; " ; "" ) & Get ( ApplicationArchitecture ) & If ( IsEmpty (…" ] 
+# 
+Exit Script [ Text Result: Base64EncodeRFC ( 4648 ; $appKey & ":" & $appSecret ) ] 

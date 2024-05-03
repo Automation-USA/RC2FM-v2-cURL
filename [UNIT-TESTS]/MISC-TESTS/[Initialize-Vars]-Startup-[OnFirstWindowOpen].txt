@@ -1,0 +1,4 @@
+# [Initialize-Vars]-Startup-[OnFirstWindowOpen]
+
+Set Variable [ $$fm.errorLogging ; Value: False ] 
+Perform Script [ Specified: From list ; “[Function]__Init__RingCentral.API.Environment( )” ; Parameter:    ]

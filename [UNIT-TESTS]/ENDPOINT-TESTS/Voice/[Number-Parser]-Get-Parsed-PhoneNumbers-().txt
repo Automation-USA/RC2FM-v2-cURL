@@ -1,0 +1,33 @@
+# Name:
+[Number-Parser]-Get-Parsed-PhoneNumbers-()
+
+Created by: Julio Toledo - Automation USA LLC
+
+Purpose:
+Tests parsing and/or formatting phone numbers.
+
+Important Notes:
+-Requires FileMaker 16+ native JSON functions
+
+Set Variable [ 
+	$param.json ; 
+	Value: Let ( 
+		[ 
+			//list1 = Quote (8005551212) & "," & Quote(911) & "" & Quote(+496704660908) ; 
+			jsonBody = JSONSetElement (
+				"" ; "originalStrings.[0]" ; "8005551212" ; JSONString );
+		
+			jsonBody = JSONSetElement ( 
+				jsonBody; "originalStrings.[1]" ; "911" ; JSONString  
+			) ;
+		
+			jsonBody = JSONSetElement ( 
+				jsonBody; "originalStrings.[2]" ; "+496704660908" ; JSONString 
+			)	
+		] ; 
+	
+		//calculation 
+		JSONFormatElements ( jsonBody)
+	) 
+] 
+Perform Script [ Specified: From list ; “[POST]__RingCentral-ParsePhoneNumberList-(param.json)” ; Parameter: $param.json ]

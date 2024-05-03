@@ -1,0 +1,111 @@
+# Name:
+[POST]__RingCentral-ParsePhoneNumberList-(param.json)
+
+History:
+Created by: Julio Toledo - Automation USA LLC
+Created: 2020-01-11
+Last Modified: 2022-1111 - Julio Toledo
+Completed code QA
+
+Purpose: Returns one or more parsed and/or formatted phone numbers passed as strings.
+
+-Parameter:
+JSON object with the following value: 
+{
+	"originalStrings" //<-- (JSONArray)
+}
+
+- Parameter Definition: 
+	-"originalStrings" (list of phone numbers (64 items or less) passed as an array of strings. Maximum length of each item is also 64 characters.)
+
+- Example use passing multiple phone numbers:
+	JSONSetElement ( 
+		"{}" ; 
+		[ "originalStrings" ; "[\"8004699269\", \"6505234578\", \"+496704660908\", \""911\"]" ; "" ]
+	)
+
+Global Variables:
+-Requires valid "$$rc.responseTokenOAuth" JSON object (from API session authentication)
+-Requires "$$rc.accessTokenExpiryTime" global variable 
+
+Reference:
+-https://developers.ringcentral.com/api-reference/Phone-Numbers/parsePhoneNumber
+
+Important Notes:
+-Requires FileMaker 16+ native JSON functions
+
+Set Variable [ $scriptName ; Value: "Script: " & Quote ( Get (ScriptName) ) ] 
+# 
+# Escape if parameter is not supplied
+If [ IsEmpty ( Get (ScriptParameter ) ) ] 
+	Perform Script [ Specified: From list ; “[Function]__Get__FM.ErrorDescription( errorCode )” ; Parameter: 958 ]
+	Set Variable [ $ErrorDescription ; Value: Get ( ScriptResult ) ] 
+	Exit Script [ Text Result: JSONSetElement ( "{}" ; [ "errorCode" ; 958 ; JSONNumber ] ; [ "error_description" ; $ErrorDescription & ¶ & ¶  & $scriptName ; JSONString ] ; [ "error" ; True ; "" ] ) ] 
+End If
+# 
+# validate parameter syntax
+If [ Left ( JSONFormatElements (  Get ( ScriptParameter ) ) ; 1 ) = "?" ] 
+	Perform Script [ Specified: From list ; “[Function]__Get__FM.ErrorDescription( errorCode )” ; Parameter: 1710 ]
+	Set Variable [ $ErrorDescription ; Value: Get ( ScriptResult ) ] 
+	Exit Script [ Text Result: JSONSetElement ( "{}" ; [ "errorCode" ; 1710 ; JSONNumber ] ; [ "error_description" ; "Malformed JSON or " & $ErrorDescription & ¶ & ¶ & $scriptName ; JSONString ] ; [ "error" ; True ; "" ] ) ] 
+End If
+# 
+# store script parameter
+Set Variable [ $param.json ; Value: Get ( ScriptParameter ) ] 
+# 
+# parse JSON
+Set Variable [ $originalStrings ; Value: JSONGetElement ( $param.json ; "originalStrings" ) ] 
+# 
+# Validate required parameter
+If [ not PatternCount ( $originalStrings ; "[" ) or Left ( JSONGetElement ( $originalStrings  ; ".[0]" ) ; 1 ) = "?" or ValueCount( JSONListValues ( $originalStrings  ; "." )) < 1 ] 
+	Perform Script [ Specified: From list ; “[Function]__Get__FM.ErrorDescription( errorCode )” ; Parameter: 1710 ]
+	Set Variable [ $ErrorDescription ; Value: Get ( ScriptResult ) ] 
+	Exit Script [ Text Result: JSONSetElement ( "{}" ; [ "errorCode" ; 1710 ; JSONNumber ] ; [ "error_description" ; $ErrorDescription & ¶ & ¶ & $scriptName ; JSONString ] ; [ "error" ; True ; "" ] ) ] 
+Else If [ ValueCount( JSONListValues ( $originalStrings ; "." ) ) > 64 ] 
+	Perform Script [ Specified: From list ; “[Function]__Get__FM.ErrorDescription( errorCode )” ; Parameter: 1708 ]
+	Set Variable [ $ErrorDescription ; Value: Get ( ScriptResult ) ] 
+	Exit Script [ Text Result: JSONSetElement ( "{}" ; [ "errorCode" ; 1710 ; JSONNumber ] ; [ "error_description" ; "List of phone numbers exceeds API limit of 64. " & $ErrorDescription & ¶ & ¶ & $scriptName ; JSONString ] ; [ "error" ; True ; "" ] ) ] 
+Else
+	# loop through number list and validate each requested item
+	Set Variable [ $i ; Value: 0 ] 
+	Set Variable [ $numberList ; Value: JSONListValues ( $originalStrings ; "." ) ] 
+	Set Variable [ $numberCount ; Value: ValueCount( $numberList ) ] 
+	Loop
+		Exit Loop If [ Let ( $i = $i + 1 ; $i > $numberCount ) ] 
+		Set Variable [ $aNumber ; Value: Substitute ( GetValue ( $numberList ; $i ) ; ¶ ; "" ) ] 
+		If [ Length ( $aNumber ) > 64 ] 
+			Perform Script [ Specified: From list ; “[Function]__Get__FM.ErrorDescription( errorCode )” ; Parameter: 1708 ]
+			Set Variable [ $ErrorDescription ; Value: Get ( ScriptResult ) ] 
+			Exit Script [ Text Result: JSONSetElement ( "{}" ; [ "errorCode" ; 1710 ; JSONNumber ] ; [ "error_description" ; "Length of number \"" & $aNumber & "\" exceeds API limit of 64 characters. " & $ErrorDescription & ¶ & ¶ & $scriptName ; JSONString ] ; [ "error" ; True ; "" ] ) ] 
+		End If
+	End Loop
+End If
+# 
+# validate API token
+Set Variable [ $tokenTimeLeft ; Value: GetAsNumber ( Get ( CurrentHostTimestamp ) - GetAsTimestamp ( $$rc.accessTokenExpiryTime ) ) ] 
+If [ $tokenTimeLeft > -60 ] 
+	Perform Script [ Specified: From list ; “[POST]__RingCentral-Refresh-Token-[Prolong-Session]-( )” ; Parameter:    ]
+End If
+Set Variable [ $token ; Value: JSONGetElement ( $$rc.responseTokenOAuth ; ".access_token" ) ] 
+# 
+# concatenate endpoint URL
+Set Variable [ $url ; Value: $$rc.baseURL & $$rc.endpointNumberParser ] 
+# 
+# Concatenate entire cURL command
+Set Variable [ $jsonBody ; Value: $param.json ] 
+Set Variable [ $cURL ; Value: "-X POST
+	--header \"Content-Type: application/json\"
+	--header \"Accept: application/json\" 
+	--header \"Authorization: Bearer " & $token & "\" 
+	--header \"User-Agent: " & $$rc.userAgent & "\"
+	--dump-header \"$$rc.responseParsedNumsHeader\"
+	--show-error
+	--data @$jsonBody" 
+] 
+# 
+# clear number parser global var
+Set Variable [ $$rc.responseParsedNums ; Value: "" ] 
+# 
+# [HTTP-POST]
+Insert from URL [ Select ; With dialog: Off ; Target: $$rc.responseParsedNums ; $url ; Verify SSL Certificates ; cURL options: $cURL ] 
+# 

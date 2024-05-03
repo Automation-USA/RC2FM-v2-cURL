@@ -1,0 +1,3 @@
+# [Revoke-Token]-End-Session-()
+
+Perform Script [ Specified: From list ; “[POST]__RingCentral-Revoke-Tokens-[End-Session]-( )” ; Parameter:    ]

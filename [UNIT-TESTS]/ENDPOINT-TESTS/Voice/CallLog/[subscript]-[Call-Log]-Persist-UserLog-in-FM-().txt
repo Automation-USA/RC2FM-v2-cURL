@@ -1,0 +1,21 @@
+# [subscript]-[Call-Log]-Persist-UserLog-in-FM-()
+
+# **insert call log records into FM database**
+Set Variable [ $payloadType ; Value: Let ( uri = JSONGetElement ( $$rc.responseCallLog ; ".uri" ) ; 	//calculation 	Case ( 		PatternCount ( uri ; "view=Simple" ) ; "simple" ; 		PatternCount ( uri ; "view=Detailed" ) ; "detailed" ; 		//defaultResult 		"simple" 	) ) ] 
+Set Variable [ $destinationLayout ; Value: "ScriptUse__RC2FMv2_UNIFIED_LOGS" ] 
+Set Variable [ 
+	$payload ; 
+	Value: JSONSetElement ( 	
+		$$rc.responseCallLog ; 	
+		["layoutName" ; $destinationLayout ; JSONString] ; 	
+		["payloadType" ; $payloadType ; JSONString] 
+	) 
+] 
+# 
+Set Variable [ $start ; Value: Get(CurrentTimeUTCMilliseconds) ] 
+Perform Script [ Specified: From list ; “[Insert]__Write-to-FM_UnifiedLog( param.json )” ; Parameter: $payload ]
+Set Variable [ $end ; Value: Get(CurrentTimeUTCMilliseconds) ] 
+# 
+Show Custom Dialog [ "Time taken to parse and generate " & Get ( FoundCount ) & " records and populate " & $fieldCount &…" ] 
+// Set Variable [ $$rc.responseCallLog ; Value: "" ] 
+# 

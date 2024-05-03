@@ -1,0 +1,41 @@
+# Name:
+[GET]__RingCentral-User-Permissions-()
+
+History:
+Created by: Julio Toledo - Automation USA LLC
+Created: 2020-01-11
+Last Modified: 2023-1111 - Julio Toledo
+Completed code QA
+
+Purpose:
+Get User Authorization Profile (list of user permissions)
+
+Parameters: None
+
+Global Variables:
+-Requires valid "$$rc.responseTokenOAuth" JSON object (from API session authentication)
+-Requires "$$rc.accessTokenExpiryTime" global variable 
+
+Reference:
+https://developers.ringcentral.com/api-reference/account
+
+Important Notes:
+-Requires FileMaker 16+ native JSON functions
+
+# validate token
+Set Variable [ $tokenTimeLeft ; Value: GetAsNumber ( Get ( CurrentHostTimestamp ) - GetAsTimestamp ( $$rc.accessTokenExpiryTime ) ) ] 
+If [ $tokenTimeLeft > -60 ] 
+	Perform Script [ Specified: From list ; “[POST]__RingCentral-Refresh-Token-[Prolong-Session]-( )” ; Parameter:    ]
+End If
+Set Variable [ $token ; Value: JSONGetElement ( $$rc.responseTokenOAuth ; ".access_token" ) ] 
+# 
+# concatenate entire cURL command
+Set Variable [ $cURL ; Value: " -X GET --header \"Accept: application/json\" --header \"Authorization: Bearer " & $token & "\" --header \"User-Agent: " & $$rc.userAgent & "\" --dump-header \"$$rc.responseAuthzHeader\" " ] 
+# 
+# concatenate endpoint
+Set Variable [ $url ; Value: $$rc.baseURL & $$rc.endpointAccountPermissions ] 
+# 
+Set Variable [ $$rc.responseAuthzHeader ; Value: "" ] 
+# 
+# [HTTP-GET]
+Insert from URL [ Select ; With dialog: Off ; Target: $$rc.responseAuthz ; $url ; Verify SSL Certificates ; cURL options: $cURL ] 

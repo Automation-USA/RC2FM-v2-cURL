@@ -1,0 +1,22 @@
+# Name:
+[Call-Log]-Get-a-CallRecording-()
+
+Created by: Julio Toledo - Automation USA LLC
+
+Purpose:
+Tests fetching a specific call recording corresponding to a call log record
+
+Important Notes:
+-Requires FileMaker 16+ native JSON functions
+
+Set Variable [ 
+	$param.json ; 
+	Value: JSONSetElement ( 	
+		"{}" ; 	
+		[ "recordingID" ; 2217541504012 ; JSONNumber ] ; 	
+		[ "destination_path" ; GetFieldName ( RC2FM_GLOBALS::tempContainer6 ) ; JSONString ] 
+	) 
+] 
+// Set Variable [ $param.json ; Value: JSONSetElement ( 	"{}" ; 	[ "recordingID" ; 877533160012 ; JSONNumber ] ; 	[ "destination_path" ; RC2FMv2_ATTACHMENTS::attachment ; JSONString ] ) ] 
+Perform Script [ Specified: From list ; “[GET]__RingCentral-Call-Recording-Content-(param.json)” ; Parameter: $param.json ]
+Set Variable [ $result ; Value: Get (ScriptResult) ] 

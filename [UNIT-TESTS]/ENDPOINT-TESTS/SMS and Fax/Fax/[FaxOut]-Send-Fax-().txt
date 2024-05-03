@@ -1,0 +1,67 @@
+# Name:
+[FaxOut]-Send-Fax-()
+
+Created by: Julio Toledo - Automation USA LLC
+
+Purpose:
+Tests sending an MMS message
+
+Important Notes:
+-Requires FileMaker 16+ native JSON functions
+-This unit test requires FileMaker's native "While" function (FileMaker versions 18+)
+-This unit test feeds off hard-coded sample data stored in table "RC2M_GLOBALS" inside several global-storage fields (e.g. "RC2FM_GLOBALS::tempContainer5")
+# 
+# Fax message cover
+Set Variable [ $originalText ; Value: "Hello world!¶This is my test Fax!" ] 
+Set Variable [ $messageText ; Value: Substitute ( $originalText ; [Char ( "10" ); "\n" ]; [Char ( "13" ); "\n" ] ; [ Char ( "¶" ); "\n" ] ) ] 
+# 
+# Fax sender's phone number (e.g. *your* RingCentral fax number)
+Set Variable [ $fromPhoneNum ; Value: "+13055702631" //$$MainCompanyNumber ] 
+# 
+# Single Fax recipient (single destination fax number)
+// Set Variable [ $toPhones ; Value: "+13055551212" ] 
+# multiple Fax recipients (a group of destination fax numbers)
+Set Variable [ $toPhones ; Value: List ( "+13055551212" ; "+17865551212"; "+19545551212" ) ] 
+# 
+# JSON encode parameter (requires FileMaker native "While" function (available in versions 18+)
+Set Variable [ 
+	$param.json ; 
+	Value: While ( 
+			//initialVariable(s)
+			[ 
+				fromNum = $fromPhoneNum ;
+				numList = $toPhones;
+				json = JSONSetElement ( 
+					"{}" ;
+					[ "from" ; fromNum ; JSONString ];
+					[ "text" ; $messagetext ; JSONString ]
+				 ) ; 
+				i = -1 ] ; 
+	
+			//condition
+			i < ValueCount ( numList ) -1 ;
+	
+			//logic
+			[
+				i = i + 1 ; //iterate from 0
+				aNum = GetValue ( numList ; i+1 ) ;
+				obj = JSONSetElement ( "{}" ; "phoneNumber" ; aNum ; JSONString );
+				json = JSONSetElement ( json ; "to[" & i & "]" ; obj ; JSONObject )
+			] ; 
+	
+			//result
+			JSONSetElement ( 
+	
+				json ; 
+	
+				[ "attachment_path" ; GetFieldName ( RC2FM_GLOBALS::tempContainer5  ) ; JSONString ] ; 
+				[ "attachment_mime" ; "application/pdf" ; JSONString ] ;
+				[ "attachmentFileName" ; GetContainerAttribute ( GetField  ( GetFieldName ( RC2FM_GLOBALS::tempContainer5  ) ); "fileName" ) ; JSONString ] ;
+				[ "attachmentSize" ; GetContainerAttribute ( GetField  ( GetFieldName ( RC2FM_GLOBALS::tempContainer5  ) ); "fileSize" ) ; JSONString ] ;
+				[ "faxResolution" ; "High" ; JSONString ] ;
+				[ "sendTime" ; Get ( CurrentHostTimestamp ) ; JSONString ]
+			)
+	)
+] 
+Perform Script [ Specified: From list ; “[POST]__RingCentral-FaxOut-(param.json)” ; Parameter: $param.json ]
+Set Variable [ $result ; Value: Get (ScriptResult) ] 

@@ -5,7 +5,7 @@ We have ported all of the backend PHP code for [RC2FM Connector](https://www.rc2
 
 **Features**
 - Compatible with RingCentral's [JWT authentication flow](https://developers.ringcentral.com/guide/authentication/jwt-flow).
-- 100% FileMaker native (fully commented scripts, cURL requests, and FileMaker tables).
+- :100:**FileMaker native** (fully commented scripts, cURL requests, and FileMaker tables).
 - Unified logs FileMaker table consolidates RingCentral call log and message log schema.
 - Test scripts show you how to call the APIs that make the magic work.
 - Full feature parity with our (now retired) commercial product:

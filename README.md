@@ -21,3 +21,7 @@ We have ported all of the backend PHP code for [RC2FM Connector](https://www.rc2
 **What's *not* included**
 - No 'look-and-feel' UI (no custom layout themes, menus, buttons, etc). Feel free to design your own interface to match the look of your FileMaker application(s).
 - No technical support. As open-source code, you have entire developer communities to help you on either side of the [FileMaker](https://community.claris.com/) and [RingCentral](https://community.ringcentral.com/spaces/8/index.html) equation.
+
+**Note**
+
+No Generative pre-trained transformers (GPTs) were hurt during the writing of this code. This repository consists of :100: human-powered developement :slightly_smiling_face: 

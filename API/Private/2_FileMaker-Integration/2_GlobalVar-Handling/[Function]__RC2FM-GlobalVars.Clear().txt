@@ -14,7 +14,7 @@ Parameters:
 None
 
 Important Notes:
--Requires Base645EncodeRFC function (FileMaker 17+)
+-None
 
 Allow User Abort [ Off ]
 # 

@@ -1,3 +1,5 @@
+# [POST]__RingCentral-Revoke-Tokens-[End-Session]-( ) in file RC2FM2_cURL
+
 # Name:
 [POST]__RingCentral-Revoke-Tokens-[End-Session]-()
 
@@ -27,6 +29,17 @@ Set Variable [ $$rc.responseTokenOAuth.Revoke ; Value: "" ]
 Perform Script [ Specified: From list ; “[Function]__Init__RingCentral.API.Environment( )” ; Parameter:    ]
 Set Variable [ $BasicAuth ; Value: Get ( ScriptResult ) ] 
 # 
+# validate JSON global var
+If [ IsEmpty ( $$rc.responseTokenOAuth ) ] 
+	Perform Script [ Specified: From list ; “[Function]__Get__FM.ErrorDescription( errorCode )” ; Parameter: 958 ]
+	Set Variable [ $ErrorDescription ; Value: Get ( ScriptResult ) ] 
+	Exit Script [ Text Result: JSONSetElement ( "{}" ; [ "errorCode" ; 958 ; JSONNumber ] ; [ "error_description" ; $ErrorDescription & ¶ & ¶  & $scriptName ; JSONString ] ; [ "error" ; True ; "" ] ) ] 
+Else If [ Left ( JSONFormatElements (  $$rc.responseTokenOAuth ) ; 1 ) = "?" ] 
+	Perform Script [ Specified: From list ; “[Function]__Get__FM.ErrorDescription( errorCode )” ; Parameter: 1710 ]
+	Set Variable [ $ErrorDescription ; Value: Get ( ScriptResult ) ] 
+	Exit Script [ Text Result: JSONSetElement ( "{}" ; [ "errorCode" ; 1710 ; JSONNumber ] ; [ "error_description" ; "Malformed JSON or " & $ErrorDescription & ¶ & ¶ & $scriptName ; JSONString ] ; [ "error" ; True ; "" ] ) ] 
+End If
+ 
 # #####-revoke refresh token-#####
 Set Variable [ $token ; Value: JSONGetElement ( $$rc.responseTokenOAuth ; ".refresh_token" ) ] 
 # 

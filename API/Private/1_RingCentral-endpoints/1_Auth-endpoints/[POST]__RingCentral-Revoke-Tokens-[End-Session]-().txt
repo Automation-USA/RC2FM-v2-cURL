@@ -1,5 +1,3 @@
-# [POST]__RingCentral-Revoke-Tokens-[End-Session]-( ) in file RC2FM2_cURL
-
 # Name:
 [POST]__RingCentral-Revoke-Tokens-[End-Session]-()
 

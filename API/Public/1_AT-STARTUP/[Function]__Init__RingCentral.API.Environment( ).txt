@@ -1,5 +1,3 @@
-# [Function]__Init__RingCentral.API.Environment( )
-
 # Name:
 [Function]__Init__RingCentral.API.Environment()
 

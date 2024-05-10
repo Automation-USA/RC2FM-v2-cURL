@@ -119,7 +119,54 @@ If [ Let ( 	perPage = Filter ( $perPage ; "0123456789" ) ; 	//calculation 	If ( 
 End If
 # 
 # query parameters validation
-Set Variable [ $queryParams ; Value: //override invalid query params by either omitting params with null values or by replacing invalid values with predefined values "?" & //'view' param override (substitute null value with request for 'Simple' report format) "view=" & If ( IsEmpty ( $view… ] 
+Set Variable [ 
+	$queryParams ; 
+	Value: //override invalid query params by either omitting params with null values or by replacing invalid values with predefined values
+	"?" &
+	
+	//'view' param override (substitute null value with request for 'Simple' report format)
+	"view=" & If ( IsEmpty ( $view ) ; 
+		"Simple" ; 
+		//else
+		If ( Exact (LeftWords ( $view ; 1 ) ; "Detailed" ) ; 
+			$view ; 
+			"Simple"
+		) 
+	) &
+	
+	//'page' param override (substitute negative value with request for page 1) 
+	"&page=" & If ( IsEmpty ( $pageNum ) or GetAsNumber ( $perPage ) < 1 ; 1 ; $pageNum ) & 
+	
+	//'perPage' param override (substitute null or negative values with request for 1000 records per page)
+	"&perPage=" & If ( IsEmpty ( $perPage ) or GetAsNumber ( $perPage ) < 1 ; "1000" ; $perPage ) &
+	
+	//'dateFrom' param override (omit param)
+	If ( not IsEmpty ( $dateFrom ) ;  "&dateFrom=" & $dateFrom ; "" ) &
+	
+	//'dateTo' param override (omit param)
+	If ( not IsEmpty ( $dateTo ) ;  "&dateTo=" & $dateTo ; "" ) &
+	 
+	//'recordingType' override (omit null param, otherwise susbsitute invalid value with request for 'All' record types) 
+	If (not IsEmpty ( $recordingType) ; 
+	"&recordingType=" & 
+		Let ( 
+		[ 
+			recordingType = LeftValues ( $recordingType ; 1 ) ;
+			validTypes = List ( "Automatic" ; "OnDemand" ; "All" )
+		] ;
+	
+			//calculation
+			If ( 
+				ValueCount ( FilterValues ( recordingType ; validTypes ) ) = 1;
+	 
+				Upper ( Left ( $recordingType ; 1 ) ) & Lower ( Right ( $recordingType ; Length ( $recordingType )-1 ) );
+				"All"
+			)
+		) ;
+	//else
+	""
+	)
+] 
 # 
 # validate API token
 Set Variable [ $tokenTimeLeft ; Value: GetAsNumber ( Get ( CurrentHostTimestamp ) - GetAsTimestamp ( $$rc.accessTokenExpiryTime ) ) ] 

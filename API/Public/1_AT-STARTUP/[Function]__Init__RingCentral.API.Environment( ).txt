@@ -65,6 +65,18 @@ Perform Script [ Specified: From list ; “[Function]__Get_System.Platform.Versi
 Set Variable [ $SystemVersion ; Value: Get ( ScriptResult ) ] 
 Perform Script [ Specified: From list ; “[Function]__Get_Device.Type( )” ; Parameter:    ]
 Set Variable [ $DeviceType ; Value: Get ( ScriptResult ) ] 
-Set Variable [ $$rc.userAgent ; Value: "RC2FM/2.0 (Claris; FileMaker" & LeftWords ( Get (ApplicationVersion) ; 1 ) &  "/" & RightWords ( Get (ApplicationVersion) ; 1 ) & "; " & If ( not IsEmpty ( $DeviceType ) ; $DeviceType &  "; " ; "" ) & Get ( ApplicationArchitecture ) & If ( IsEmpty (…" ] 
+Set Variable [ $$rc.userAgent ; Value: 
+	"RC2FM/2.0 (Claris; FileMaker" & 
+		LeftWords ( Get (ApplicationVersion) ; 1 ) &  
+		"/" & 
+		RightWords ( Get (ApplicationVersion) ; 1 ) & "; " &
+		If ( not IsEmpty ( $DeviceType ) ; $DeviceType &  "; " ; "" ) &
+		Get ( ApplicationArchitecture ) & 
+		If ( IsEmpty ( $SystemVersion ) ; 
+			"" ; 
+			" " & Substitute ( $SystemVersion ; ["." ; "_"]; ["macOS"; "Mac OS X"] ) 
+		) 
+		& ")" 
+] 
 # 
 Exit Script [ Text Result: Base64EncodeRFC ( 4648 ; $appKey & ":" & $appSecret ) ] 

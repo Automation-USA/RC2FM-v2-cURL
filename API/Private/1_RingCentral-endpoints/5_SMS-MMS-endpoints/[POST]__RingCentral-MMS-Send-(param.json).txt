@@ -38,7 +38,8 @@ JSON object with following values:
 	"{}" ; 
 		[ "from" ; "+13055551212" ; JSONString ] ;
 		[ "to" ; "[{\"phoneNumber\":\"+13055702631\"},{\"phoneNumber\":\"+17865551212\"}, {\"phoneNumber\":\"+19545551212\"}]" ; "" ];
-		[ "text" ; "Hello world! This is my MMS!" ; JSONString ] ;		[ "attachments"; List (GetFieldName ( RC2FM_GLOBALS::tempContainer) ; GetFieldName ( RC2FM_GLOBALS::tempContainer2  ) ; JSONString ]
+		[ "text" ; "Hello world! This is my MMS!" ; JSONString ] ;
+		[ "attachments"; List (GetFieldName ( RC2FM_GLOBALS::tempContainer) ; GetFieldName ( RC2FM_GLOBALS::tempContainer2  ) ; JSONString ]
 	)
 
 Global Variables:

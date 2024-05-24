@@ -1,7 +1,7 @@
 # RC2FM2-cURL
 RC2FM2-cURL is a free and open-source ***complete re-write*** of our server-side [RingCentral app](https://t.co/XzKvvUs3A9) integration for the Claris FileMaker platform that we are releasing as fully open-source.
  
-We have ported all of the backend PHP code for [RC2FM Connector](https://www.rc2fm.com) into 100% native FileMaker scripts and cURL commands, making the functionality of our RingCentral™ API integration available as open source for all FileMaker users to use. All you require is a RingCentral® subscription, a free RingCentral® [developer account](https://developers.ringcentral.com/sign-up), and your own RingCentral [integration app](https://developers.ringcentral.com/guide/getting-started/register-app).
+We have ported all of the backend PHP code for [RC2FM Connector](https://www.rc2fm.com) into 100% native FileMaker scripts and cURL commands. By leveraging the functionality of FileMaker's domain-specific procedural language, we are making the functionality of our RingCentral™ API integration available freely for all FileMaker users to use. All you require is a RingCentral® subscription, a free RingCentral® [developer account](https://developers.ringcentral.com/sign-up), and your own RingCentral [integration app](https://developers.ringcentral.com/guide/getting-started/register-app).
 
 **Features**
 - Compatible with RingCentral's [JWT authentication flow](https://developers.ringcentral.com/guide/authentication/jwt-flow).

@@ -29,11 +29,11 @@ Set Variable [
 	Value: While ( 		
 		//initialVariable(s) 		
 		[
-	 			fromNum = $fromPhoneNum ;
+	 			fromNum = JSONSetElement ( "{}" ; "phoneNumber" ; $fromPhoneNum ; JSONString ) ;
 	 			numList = $toPhones; 			
 	 			json = JSONSetElement ( 
 						"{}" ; 
-						[ "from" ; fromNum ; JSONString ]; 
+						[ "from" ; fromNum ; "" ]; 
 						[ "text" ; $messagetext ; JSONString ] 
 				) ;
 	 			i = -1 

@@ -12,7 +12,7 @@ Important Notes:
 
 # SMS message body
 // Set Variable [ $originalText ; Value: RC2FM_GLOBALS::smsText ] 
-Set Variable [ $originalText ; Value: "Hello world!¶This is my SMS test!" ] 
+Set Variable [ $originalText ; Value: "Hello world! This is my MMS test!" ] 
 Set Variable [ $messageText ; Value: Substitute ( $originalText ; [Char ( "10" ); "\n" ]; [Char ( "13" ); "\n" ] ; [ Char ( "¶" ); "\n" ] ) ] 
 # 
 # SMS sender's phone number (e.g. *your* RingCentral phone number)

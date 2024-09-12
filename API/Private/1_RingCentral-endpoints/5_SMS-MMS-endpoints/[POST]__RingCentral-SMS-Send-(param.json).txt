@@ -98,7 +98,18 @@ Set Variable [ $url ; Value: $$rc.baseURL & $$rc.endpointSMS ]
 Set Variable [ $json ; Value: $param.json ] 
 # 
 # Concatenate entire cURL command
-Set Variable [ $cURL ; Value: "-X POST --header \"Content-Type: application/json\" --header \"Accept: application/json\" --header \"Authorization: Bearer " & $token & "\" & --header \"User-Agent: " & $$rc.userAgent & "\" --dump-header \"$$rc.responseSMS.sendHeader\"" & "-d @$json" ] 
+Set Variable [ $cURL ; 
+	Value: 
+	"-X POST
+	--header \"Content-Type: application/json\" 
+	--header \"Accept: application/json\" 
+	--header \"Authorization: Bearer " & $token & "\" &
+	--header \"User-Agent: " & $$rc.userAgent & "\"
+	
+	--dump-header \"$$rc.responseSMS.sendHeader\" &
+	
+	-d @$json" 
+	] 
 # 
 # clear SMS global var
 Set Variable [ $$rc.responseSMS.send ; Value: "" ] 

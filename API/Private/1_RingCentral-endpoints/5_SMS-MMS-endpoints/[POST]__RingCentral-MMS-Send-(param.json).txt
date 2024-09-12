@@ -1,3 +1,5 @@
+# [POST]__RingCentral-MMS-Send-(param.json) in file RC2FM2_cURL
+
 # Name:
 [POST]__RingCentral-MMS-Send-(param.json)
 
@@ -38,8 +40,7 @@ JSON object with following values:
 	"{}" ; 
 		[ "from" ; "+13055551212" ; JSONString ] ;
 		[ "to" ; "[{\"phoneNumber\":\"+13055702631\"},{\"phoneNumber\":\"+17865551212\"}, {\"phoneNumber\":\"+19545551212\"}]" ; "" ];
-		[ "text" ; "Hello world! This is my MMS!" ; JSONString ] ;
-		[ "attachments"; List (GetFieldName ( RC2FM_GLOBALS::tempContainer) ; GetFieldName ( RC2FM_GLOBALS::tempContainer2  ) ; JSONString ]
+		[ "text" ; "Hello world! This is my MMS!" ; JSONString ] ;		[ "attachments"; List (GetFieldName ( RC2FM_GLOBALS::tempContainer) ; GetFieldName ( RC2FM_GLOBALS::tempContainer2  ) ; JSONString ]
 	)
 
 Global Variables:
@@ -82,7 +83,7 @@ Set Variable [ $text ; Value: JSONGetElement ( $param.json ; "text" ) ]
 Set Variable [ $attachments ; Value: JSONGetElement ( $param.json ; "attachments" ) ] 
 # 
 # Validate required parameters
-If [ IsEmpty ( $fromPhoneNumber ) or IsEmpty ( $toPhoneNum ) or IsEmpty ( $attachmentPath ) ] 
+If [ IsEmpty ( $fromPhoneNumber ) or IsEmpty ( $toPhoneNum ) or IsEmpty ( $attachments ) ] 
 	Perform Script [ Specified: From list ; “[Function]__Get__FM.ErrorDescription( errorCode )” ; Parameter: 1703 ]
 	Set Variable [ $ErrorDescription ; Value: Get ( ScriptResult ) ] 
 	Exit Script [ Text Result: JSONSetElement ( "{}" ; [ "errorCode" ; 1703 ; JSONNumber ] ; [ "error_description" ; $ErrorDescription & ¶ & ¶ & $scriptName ; JSONString ] ; [ "error" ; True ; "" ] ) ] 
@@ -128,7 +129,8 @@ Loop
 	End If
 	# 
 	# validate attachments file size <= max size
-	Set Variable [ $combinedFileSize ; Value: $combinedFileSize + GetContainerAttribute ( GetField  ( GetFieldName ( $aContainerField ) ); "fileSize" ) ] 
+	// Set Variable [ $combinedFileSize ; Value: $combinedFileSize + GetContainerAttribute ( GetField  ( GetFieldName ( $aContainerField ) ); "fileSize" ) ] 
+	Set Variable [ $combinedFileSize ; Value: $combinedFileSize + GetContainerAttribute ( GetField  ( $aContainerField ); "fileSize" ) ] 
 	If [ $combinedFileSize > 1556760 ] 
 		Perform Script [ Specified: From list ; “[Function]__Get__FM.ErrorDescription( errorCode )” ; Parameter: 511 ]
 		Set Variable [ $ErrorDescription ; Value: Get ( ScriptResult ) ] 
@@ -136,7 +138,7 @@ Loop
 	End If
 	# 
 	# validate attachment MIME type
-	Set Variable [ $attachmentFileName ; Value: GetContainerAttribute ( GetField  ( GetFieldName ( $aContainerField  ) ); "fileName" ) ] 
+	Set Variable [ $attachmentFileName ; Value: GetContainerAttribute ( GetField ( $aContainerField ); "Filename" ) ] 
 	Set Variable [ $fileExtension ; Value: "." & Substitute ( 	RightValues ( Substitute ( $attachmentFileName ; "." ; ¶ ) ; 1 ) ; 	¶ ; "" ) ] 
 	Perform Script [ Specified: From list ; “[Function]__Validate__MIMEtype.MMS( param )” ; Parameter: $fileExtension ]
 	Set Variable [ $attachment_mime ; Value: Get ( ScriptResult ) ] 
@@ -157,26 +159,70 @@ Loop
 	Exit Loop If [ Let ( $i = $i + 1 ; $i > $attachmentCount ) ] 
 	Set Variable [ $aContainerField ; Value: Substitute ( GetValue ( $attachments ; $i ) ; ¶ ; "" ) ] 
 	# 
-	Set Variable [ $attachmentFileName ; Value: GetContainerAttribute ( GetField  ( GetFieldName ( $aContainerField  ) ); "fileName" ) ] 
+	Set Variable [ $attachmentFileName ; Value: GetContainerAttribute ( GetField ( $aContainerField ); "Filename" ) ] 
 	Set Variable [ $fileExtension ; Value: "." & Substitute ( 	RightValues ( Substitute ( $attachmentFileName ; "." ; ¶ ) ; 1 ) ; 	¶ ; "" ) ] 
-	Set Variable [ $attachmentContent ; Value: GetField ( GetFieldName ( $aContainerField ) ) ] 
+	If [ $i = 1 ] 
+		Set Variable [ $attachmentContent0 ; Value: GetField ( $aContainerField ) ] 
+	Else If [ $i = 2 ] 
+		Set Variable [ $attachmentContent1 ; Value: GetField ( $aContainerField ) ] 
+	Else If [ $i = 3 ] 
+		Set Variable [ $attachmentContent2 ; Value: GetField ( $aContainerField ) ] 
+	Else If [ $i = 4 ] 
+		Set Variable [ $attachmentContent3 ; Value: GetField ( $aContainerField ) ] 
+	Else If [ $i = 5 ] 
+		Set Variable [ $attachmentContent4 ; Value: GetField ( $aContainerField ) ] 
+	Else If [ $i = 6 ] 
+		Set Variable [ $attachmentContent5 ; Value: GetField ( $aContainerField ) ] 
+	Else If [ $i = 7 ] 
+		Set Variable [ $attachmentContent6 ; Value: GetField ( $aContainerField ) ] 
+	Else If [ $i = 8 ] 
+		Set Variable [ $attachmentContent7 ; Value: GetField ( $aContainerField ) ] 
+	Else If [ $i = 9 ] 
+		Set Variable [ $attachmentContent8 ; Value: GetField ( $aContainerField ) ] 
+	Else If [ $i = 10 ] 
+		Set Variable [ $attachmentContent9 ; Value: GetField ( $aContainerField ) ] 
+	End If
 	# Look up attachment MIME-type
 	Perform Script [ Specified: From list ; “[Function]__Validate__MIMEtype.MMS( param )” ; Parameter: $fileExtension ]
 	Set Variable [ $attachment_mime ; Value: Get ( ScriptResult ) ] 
 	# concatenate cURL -F commands
-	Set Variable [ $cURLbinariesList ; Value: If ( 
-		IsEmpty ( $cURLbinariesList ) ; 	
-	
+	Set Variable [ $cURLbinariesList ; 
+	Value: If ( 	
+		IsEmpty ( $cURLbinariesList ) ; 	 	
 		//result1 (initialize list)
-		"-F \"attachment=@$attachmentContent;type=" & $attachment_mime & ";filename=" & $attachmentFileName & "\"" ; 
+		"-F \"attachment=" 
+		& Case ( 
+			$i = 1 ;  "@$attachmentContent0" ; 
+			$i = 2 ;  "@$attachmentContent1" ; 
+			$i = 3 ;  "@$attachmentContent2" ;
+			$i = 4 ;  "@$attachmentContent3" ; 
+			$i = 5 ;  "@$attachmentContent4" ; 
+			$i = 6 ;  "@$attachmentContent5" ; 
+			$i = 7 ;  "@$attachmentContent6" ; 
+			$i = 8 ;  "@$attachmentContent7" ; 
+			$i = 9 ;  "@$attachmentContent8" ; 
+			$i = 10 ; "@$attachmentContent9"
+		) & ";type=" & $attachment_mime & ";filename=" & $attachmentFileName & "\"" ; 
 	
 		//result2 (append to list)
 		List ( 	
 			$cURLbinariesList ; 
-			"-F \"attachment=@$attachmentContent;type=" & $attachment_mime & ";filename=" & $attachmentFileName & "\""
+			"-F \"attachment="
+			& Case ( 
+				$i = 1 ;  "@$attachmentContent0" ; 
+				$i = 2 ;  "@$attachmentContent1" ; 
+				$i = 3 ;  "@$attachmentContent2" ;
+				$i = 4 ;  "@$attachmentContent3" ; 
+				$i = 5 ;  "@$attachmentContent4" ; 
+				$i = 6 ;  "@$attachmentContent5" ; 
+				$i = 7 ;  "@$attachmentContent6" ; 
+				$i = 8 ;  "@$attachmentContent7" ; 
+				$i = 9 ;  "@$attachmentContent8" ; 
+				$i = 10 ; "@$attachmentContent9"
+			) & ";type=" & $attachment_mime & ";filename=" & $attachmentFileName & "\""
 		)	
-	 ) 
-	] 
+	 )
+ 	] 
 End Loop
 # 
 # validate API token
@@ -191,18 +237,19 @@ Set Variable [ $url ; Value: $$rc.baseURL & $$rc.endpointMMS ]
 # 
 # pass supplied JSON parameter to cURL body (payload)
 Set Variable [ $json ; Value: JSONDeleteElement ( $param.json ; "attachments" ) ] 
-# 
+ 
 # Concatenate entire cURL command
-Set Variable [ $cURL ; Value: "-X POST 
+Set Variable [ $cURL ; Value: 
+	"-X POST 
 	--header \"Accept: application/json\" 
 	--header \"Authorization: Bearer " & $token & "\"
 	--header \"Content-Type: multipart/mixed\"
 	--header \"User-Agent: " & $$rc.userAgent & "\"
-	--dump-header \"$$rc.responseMMS.send.Header\"
-	
-	-F \"request=@$json;type=application/json\"
+	--dump-header \"$$rc.responseMMS.send.Header\"" &
+
+	"-F \"request=@$json;type=application/json\"
 	" & $cURLbinariesList
-] 
+	] 
 # 
 # clear SMS global var
 Set Variable [ $$rc.responseSMS.send ; Value: "" ] 
